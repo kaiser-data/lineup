@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 760" width="100%" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <style>
+    .h1 { font-size: 36px; font-weight: 700; fill: #1a1a1a; }
+    .h2 { font-size: 18px; fill: #6b7280; }
+    .lbl { font-size: 15px; fill: #111; }
+    .lblw { font-size: 15px; fill: #ffffff; font-weight: 600; }
+    .small { font-size: 13px; fill: #4b5563; }
+    .heading { font-size: 17px; font-weight: 700; }
+    .bullet { font-size: 14px; fill: #111; }
+    .arrow { stroke: #1a1a1a; stroke-width: 2; fill: none; }
+    .arrow-r { stroke: #16a34a; stroke-width: 2; fill: none; }
+    .arrow-share { stroke: #0ca678; stroke-width: 2; fill: none; }
+    .dash { stroke-dasharray: 8 6; }
+  </style>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/>
+    </marker>
+    <marker id="argr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arsh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0ca678"/>
+    </marker>
+  </defs>
+
+  <rect width="1560" height="760" fill="#fafaf7"/>
+
+  <text x="60" y="62" class="h1">Lineup</text>
+  <text x="60" y="92" class="h2">one sentence in ChatGPT  →  a full event pack</text>
+
+  <!-- You -->
+  <ellipse cx="160" cy="240" rx="80" ry="40" fill="#fff3bf" stroke="#a15c00" stroke-width="2"/>
+  <text x="160" y="246" class="lbl" text-anchor="middle" font-weight="700">You</text>
+  <text x="160" y="300" class="small" text-anchor="middle">type a sentence</text>
+
+  <!-- Arrow You → ChatGPT -->
+  <line x1="244" y1="240" x2="338" y2="240" class="arrow" marker-end="url(#ar)"/>
+
+  <!-- ChatGPT -->
+  <rect x="340" y="200" width="200" height="80" rx="20" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+  <text x="440" y="246" class="lbl" text-anchor="middle" font-weight="700" font-size="20">ChatGPT</text>
+
+  <!-- Arrow ChatGPT → Server -->
+  <line x1="544" y1="240" x2="638" y2="240" class="arrow" marker-end="url(#ar)"/>
+  <text x="591" y="230" class="small" text-anchor="middle">/mcp · No Auth</text>
+
+  <!-- Server container -->
+  <rect x="640" y="170" width="540" height="360" rx="22" fill="#e7f5ff" stroke="#1971c2" stroke-width="2" class="dash"/>
+  <text x="660" y="200" class="heading" fill="#1971c2">Skybridge MCP server  ·  on Alpic Cloud</text>
+
+  <!-- Tool 1 -->
+  <rect x="670" y="220" width="230" height="74" rx="14" fill="#ffffff" stroke="#1971c2" stroke-width="2"/>
+  <text x="785" y="248" class="lbl" text-anchor="middle" font-weight="700">generate-lineup</text>
+  <text x="785" y="272" class="small" text-anchor="middle">card · badges · QR · .ics</text>
+
+  <!-- Tool 2 -->
+  <rect x="670" y="306" width="230" height="74" rx="14" fill="#ffffff" stroke="#1971c2" stroke-width="2"/>
+  <text x="785" y="334" class="lbl" text-anchor="middle" font-weight="700">render-badge-png</text>
+  <text x="785" y="358" class="small" text-anchor="middle">Satori + Resvg</text>
+
+  <!-- View -->
+  <rect x="920" y="220" width="230" height="160" rx="14" fill="#ffe3e3" stroke="#e03131" stroke-width="2"/>
+  <text x="1035" y="248" class="lbl" text-anchor="middle" font-weight="700" fill="#c92a2a">React view</text>
+  <text x="1035" y="270" class="small" text-anchor="middle">renders inside ChatGPT</text>
+  <line x1="950" y1="284" x2="1120" y2="284" stroke="#fab5b5" stroke-width="1"/>
+  <text x="1035" y="306" class="small" text-anchor="middle">event card</text>
+  <text x="1035" y="326" class="small" text-anchor="middle">+ badge grid</text>
+  <text x="1035" y="346" class="small" text-anchor="middle">+ style flipper</text>
+
+  <!-- Libraries panel (narrow, under the tools) -->
+  <rect x="670" y="394" width="230" height="120" rx="14" fill="#f3f0ff" stroke="#7048e8" stroke-width="2"/>
+  <text x="785" y="416" class="small" text-anchor="middle" fill="#5f3dc4" font-weight="700">libraries (pure JS)</text>
+  <text x="785" y="446" class="bullet" text-anchor="middle">qrcode · DiceBear · ics</text>
+  <text x="785" y="472" class="bullet" text-anchor="middle">Satori · Resvg</text>
+  <text x="785" y="498" class="small" text-anchor="middle" fill="#5f3dc4">zero paid APIs</text>
+
+  <!-- Right-side callout inside server (under view): the zero-knowledge property -->
+  <rect x="920" y="394" width="230" height="120" rx="14" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+  <text x="1035" y="416" class="small" text-anchor="middle" fill="#a15c00" font-weight="700">deterministic = shareable</text>
+  <text x="1035" y="446" class="bullet" text-anchor="middle">same input ⇒</text>
+  <text x="1035" y="468" class="bullet" text-anchor="middle">same avatars + QRs</text>
+  <text x="1035" y="498" class="small" text-anchor="middle" fill="#a15c00">nothing to store</text>
+
+  <!-- Arrow Server → Pack -->
+  <line x1="1180" y1="300" x2="1278" y2="300" class="arrow" marker-end="url(#ar)"/>
+
+  <!-- Pack -->
+  <rect x="1280" y="200" width="240" height="280" rx="18" fill="#ffffff" stroke="#495057" stroke-width="2"/>
+  <text x="1400" y="232" class="heading" text-anchor="middle">The pack</text>
+  <line x1="1300" y1="246" x2="1500" y2="246" stroke="#dee2e6" stroke-width="1"/>
+  <text x="1300" y="278" class="bullet">• event card</text>
+  <text x="1300" y="306" class="bullet">• identity badges</text>
+  <text x="1300" y="334" class="bullet">• RSVP + vCard QR</text>
+  <text x="1300" y="362" class="bullet">• calendar .ics</text>
+  <text x="1300" y="390" class="bullet">• badge PNG</text>
+  <text x="1300" y="418" class="bullet">• shareable link</text>
+
+  <!-- Arrow from callout → share -->
+  <path d="M 1035 516 V 560" class="arrow-share" marker-end="url(#arsh)"/>
+  <text x="1045" y="540" class="small" fill="#0a8556">share link #fragment</text>
+
+  <!-- Share path box -->
+  <rect x="640" y="560" width="540" height="120" rx="18" fill="#c3fae8" stroke="#0ca678" stroke-width="2"/>
+  <text x="910" y="588" class="heading" text-anchor="middle" fill="#087f5b">Share link  ·  no backend  ·  nothing stored</text>
+  <line x1="660" y1="602" x2="1160" y2="602" stroke="#a3e9d0" stroke-width="1"/>
+  <text x="910" y="630" class="small" text-anchor="middle">view encodes pack → URL #fragment → QR</text>
+  <text x="910" y="654" class="small" text-anchor="middle">GitHub Pages page decodes &amp; regenerates client-side</text>
+
+  <!-- Footer -->
+  <text x="780" y="720" class="small" text-anchor="middle">
+    Two users at once: the human clicks the view  ·  the LLM reads its state.   No accounts. No paid APIs. No DB.
+  </text>
+</svg>

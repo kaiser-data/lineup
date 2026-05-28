@@ -74,17 +74,11 @@ Nothing is stored in any database. Browsers never send URL fragments to servers,
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    U([You · one sentence]) --> C[ChatGPT]
-    C -- /mcp · No Auth --> S[Skybridge MCP server<br/>on Alpic Cloud]
-    S --> T1[generate-lineup<br/>card · badges · QR · .ics]
-    S --> T2[render-badge-png<br/>Satori + Resvg]
-    S --> V[React view<br/>inside ChatGPT]
-    V -- share link #fragment --> P[GitHub Pages<br/>regenerates pack<br/>nothing stored]
-```
+![Lineup architecture: ChatGPT → Skybridge MCP server on Alpic Cloud (generate-lineup, render-badge-png, React view, deterministic libraries) → the pack. View → URL #fragment → GitHub Pages share page, nothing stored.](assets/architecture.svg)
 
 Everything is deterministic and pure-JS where it matters (avatars, QRs, calendar), so the same input always produces the same pack — which is exactly why the shareable page can regenerate it from the link alone.
+
+> The Excalidraw source is at [`architecture.excalidraw`](architecture.excalidraw) — open it at [excalidraw.com](https://excalidraw.com) to edit or export a hand-drawn version.
 
 ## Tech
 

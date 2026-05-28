@@ -1,7 +1,12 @@
 import "../index.css";
 import { useMemo, useState } from "react";
 import { useDownload, useLayout, useViewState } from "skybridge/web";
-import { useToolInfo } from "../helpers.js";
+import { useToolInfo, useCallTool } from "../helpers.js";
+
+function base64FromDataUrl(dataUrl: string): string {
+  const comma = dataUrl.indexOf(",");
+  return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+}
 
 type Badge = {
   name: string;
@@ -76,11 +81,7 @@ export default function GenerateLineup() {
   }>({ selectedBadge: null });
 
   if (isPending || !output) {
-    return (
-      <div className="p-6 text-sm opacity-70">
-        Generating your Lineup…
-      </div>
-    );
+    return <LineupSkeleton isDark={isDark} />;
   }
 
   const data = output as Output;
@@ -96,6 +97,54 @@ export default function GenerateLineup() {
         }))
       }
     />
+  );
+}
+
+function LineupSkeleton({ isDark }: { isDark: boolean }) {
+  const surface = isDark ? "#0b0b0f" : "#fafaf7";
+  const block = isDark ? "#1f1f27" : "#ececea";
+  const card = isDark ? "#15151c" : "#ffffff";
+  const shimmer: React.CSSProperties = {
+    background: `linear-gradient(90deg, ${block} 25%, ${
+      isDark ? "#2a2a34" : "#f4f4f2"
+    } 37%, ${block} 63%)`,
+    backgroundSize: "400% 100%",
+    animation: "gradient-flow 1.4s ease infinite",
+  };
+  return (
+    <div style={{ background: surface, padding: 20 }} className="space-y-5">
+      <div
+        style={{
+          background: card,
+          borderRadius: 24,
+          padding: 28,
+          display: "flex",
+          gap: 24,
+          alignItems: "center",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ ...shimmer, height: 14, width: 70, borderRadius: 6 }} />
+          <div style={{ ...shimmer, height: 30, width: "70%", borderRadius: 8, marginTop: 14 }} />
+          <div style={{ ...shimmer, height: 14, width: "45%", borderRadius: 6, marginTop: 16 }} />
+        </div>
+        <div style={{ ...shimmer, width: 132, height: 132, borderRadius: 18 }} />
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+          gap: 16,
+        }}
+      >
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            style={{ ...shimmer, aspectRatio: "3 / 4", borderRadius: 18 }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -408,12 +457,38 @@ function BadgeCard({
   onSelect: () => void;
 }) {
   const { download } = useDownload();
+  const { callToolAsync, isPending: isRendering } = useCallTool("render-badge-png");
   const [hover, setHover] = useState(false);
   const firstName = badge.name.split(" ")[0];
 
   const downloadBadge = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const composed = composeBadgeSvg(badge, event, accent);
+    try {
+      const res = await callToolAsync({
+        name: badge.name,
+        role: badge.role,
+        accentHex: accent,
+        eventTitle: event.title,
+      });
+      const pngDataUrl = res.structuredContent?.pngDataUrl;
+      if (pngDataUrl) {
+        await download({
+          contents: [
+            {
+              type: "resource",
+              resource: {
+                uri: `file:///${slugify(badge.name)}-badge.png`,
+                mimeType: "image/png",
+                blob: base64FromDataUrl(pngDataUrl),
+              },
+            },
+          ],
+        });
+        return;
+      }
+    } catch {
+      // fall through to SVG
+    }
     await download({
       contents: [
         {
@@ -421,7 +496,7 @@ function BadgeCard({
           resource: {
             uri: `file:///${slugify(badge.name)}-badge.svg`,
             mimeType: "image/svg+xml",
-            text: composed,
+            text: composeBadgeSvg(badge, event, accent),
           },
         },
       ],
@@ -443,11 +518,11 @@ function BadgeCard({
           accent,
           0.35,
         )} 50%, ${accent} 100%)`,
-        transform: lift ? "translateY(-2px)" : "translateY(0)",
+        transform: lift ? "translateY(-4px) scale(1.015)" : "translateY(0) scale(1)",
         boxShadow: lift
-          ? `0 12px 32px -12px ${rgba(accent, 0.55)}`
+          ? `0 16px 36px -12px ${rgba(accent, 0.55)}`
           : "0 1px 2px rgba(0,0,0,0.06)",
-        transition: "transform 160ms ease, box-shadow 160ms ease",
+        transition: "transform 180ms cubic-bezier(0.2,0.7,0.2,1), box-shadow 180ms ease",
       }}
     >
       <div
@@ -544,6 +619,7 @@ function BadgeCard({
         >
           <button
             onClick={downloadBadge}
+            disabled={isRendering}
             style={{
               background: "transparent",
               border: `1px solid ${border}`,
@@ -552,10 +628,11 @@ function BadgeCard({
               borderRadius: 8,
               fontSize: 11,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: isRendering ? "wait" : "pointer",
+              opacity: isRendering ? 0.6 : 1,
             }}
           >
-            Download
+            {isRendering ? "Rendering…" : "Download"}
           </button>
           <div
             style={{

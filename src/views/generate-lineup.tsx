@@ -2,9 +2,35 @@ import "../index.css";
 import { useMemo, useState } from "react";
 import { useDownload, useLayout, useViewState } from "skybridge/web";
 import { QRCodeSVG } from "qrcode.react";
+import { createAvatar } from "@dicebear/core";
+import { lorelei, notionists, bottts, shapes } from "@dicebear/collection";
 import { useToolInfo, useCallTool } from "../helpers.js";
 
 const SHARE_BASE = "https://kaiser-data.github.io/lineup/";
+
+const STYLE_OPTIONS = ["lorelei", "notionists", "bottts", "shapes"] as const;
+type StyleOption = (typeof STYLE_OPTIONS)[number];
+const STYLE_LABELS: Record<StyleOption, string> = {
+  lorelei: "Lorelei",
+  notionists: "Notionists",
+  bottts: "Bottts",
+  shapes: "Shapes",
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const STYLE_DEFS: Record<StyleOption, any> = {
+  lorelei,
+  notionists,
+  bottts,
+  shapes,
+};
+
+function generateAvatar(seed: string, style: StyleOption): string {
+  return createAvatar(STYLE_DEFS[style], {
+    seed,
+    size: 256,
+    backgroundColor: ["transparent"],
+  }).toString();
+}
 
 function base64FromDataUrl(dataUrl: string): string {
   const comma = dataUrl.indexOf(",");
@@ -111,25 +137,35 @@ export default function GenerateLineup() {
   const { theme } = useLayout();
   const isDark = theme === "dark";
 
-  const [{ selectedBadge }, setViewState] = useViewState<{
-    selectedBadge: string | null;
-  }>({ selectedBadge: null });
+  const data = output as Output | undefined;
+  const initialStyle: StyleOption =
+    data?.event?.avatarStyle && STYLE_OPTIONS.includes(data.event.avatarStyle as StyleOption)
+      ? (data.event.avatarStyle as StyleOption)
+      : "lorelei";
 
-  if (isPending || !output) {
+  const [{ selectedBadge, selectedStyle }, setViewState] = useViewState<{
+    selectedBadge: string | null;
+    selectedStyle: StyleOption;
+  }>({ selectedBadge: null, selectedStyle: initialStyle });
+
+  if (isPending || !output || !data) {
     return <LineupSkeleton isDark={isDark} />;
   }
 
-  const data = output as Output;
   return (
     <LineupCard
       data={data}
       isDark={isDark}
       selectedBadge={selectedBadge}
+      selectedStyle={selectedStyle}
       onSelect={(name) =>
         setViewState((prev) => ({
           ...prev,
           selectedBadge: prev.selectedBadge === name ? null : name,
         }))
+      }
+      onStyle={(s) =>
+        setViewState((prev) => ({ ...prev, selectedStyle: s }))
       }
     />
   );
@@ -187,12 +223,16 @@ function LineupCard({
   data,
   isDark,
   selectedBadge,
+  selectedStyle,
   onSelect,
+  onStyle,
 }: {
   data: Output;
   isDark: boolean;
   selectedBadge: string | null;
+  selectedStyle: StyleOption;
   onSelect: (name: string) => void;
+  onStyle: (s: StyleOption) => void;
 }) {
   const { event, badges } = data;
   const { day, time } = useMemo(() => formatDate(event.dateISO), [event.dateISO]);
@@ -205,10 +245,10 @@ function LineupCard({
         venue: event.venue,
         accentHex: event.accentHex,
         rsvpUrl: event.rsvpUrl,
-        avatarStyle: event.avatarStyle,
+        avatarStyle: selectedStyle,
         attendees: badges.map((b) => ({ name: b.name, role: b.role })),
       }),
-    [event, badges],
+    [event, badges, selectedStyle],
   );
   const surface = isDark ? "#0b0b0f" : "#fafaf7";
   const cardBg = isDark ? "#15151c" : "#ffffff";
@@ -221,7 +261,7 @@ function LineupCard({
         event.venue ? ` at ${event.venue}` : ""
       } on ${day} ${time}. ${badges.length} attendees: ${badges
         .map((b) => `${b.name} (${b.role})`)
-        .join(", ")}.${
+        .join(", ")}. Avatar style: ${selectedStyle}.${
         selectedBadge ? ` Currently focused on ${selectedBadge}'s badge.` : ""
       }`}
       style={{
@@ -242,6 +282,8 @@ function LineupCard({
         subtext={subtext}
         accent={accent}
         shareUrl={shareUrl}
+        selectedStyle={selectedStyle}
+        onStyle={onStyle}
       />
       <BadgeGrid
         event={event}
@@ -251,6 +293,7 @@ function LineupCard({
         border={border}
         subtext={subtext}
         selectedBadge={selectedBadge}
+        selectedStyle={selectedStyle}
         onSelect={onSelect}
       />
     </div>
@@ -266,6 +309,8 @@ function EventHeader({
   subtext,
   accent,
   shareUrl,
+  selectedStyle,
+  onStyle,
 }: {
   event: EventInfo;
   day: string;
@@ -275,6 +320,8 @@ function EventHeader({
   subtext: string;
   accent: string;
   shareUrl: string;
+  selectedStyle: StyleOption;
+  onStyle: (s: StyleOption) => void;
 }) {
   const { download } = useDownload();
   const [copied, setCopied] = useState(false);
@@ -442,6 +489,46 @@ function EventHeader({
           paddingTop: 20,
           borderTop: `1px solid ${border}`,
           display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: 13, color: subtext, marginRight: 4 }}>
+          Style
+        </div>
+        {STYLE_OPTIONS.map((s) => {
+          const active = s === selectedStyle;
+          return (
+            <button
+              key={s}
+              onClick={() => onStyle(s)}
+              style={{
+                background: active ? accent : "transparent",
+                color: active ? "#fff" : "inherit",
+                border: `1px solid ${active ? accent : border}`,
+                borderRadius: 999,
+                padding: "6px 14px",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                transition:
+                  "background 160ms ease, color 160ms ease, border-color 160ms ease",
+              }}
+            >
+              {STYLE_LABELS[s]}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          marginTop: 18,
+          paddingTop: 18,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
           gap: 16,
           alignItems: "center",
           flexWrap: "wrap",
@@ -496,6 +583,7 @@ function BadgeGrid({
   border,
   subtext,
   selectedBadge,
+  selectedStyle,
   onSelect,
 }: {
   event: EventInfo;
@@ -505,6 +593,7 @@ function BadgeGrid({
   border: string;
   subtext: string;
   selectedBadge: string | null;
+  selectedStyle: StyleOption;
   onSelect: (name: string) => void;
 }) {
   return (
@@ -540,6 +629,7 @@ function BadgeGrid({
             cardBg={cardBg}
             border={border}
             subtext={subtext}
+            selectedStyle={selectedStyle}
             selected={selectedBadge === badge.name}
             onSelect={() => onSelect(badge.name)}
           />
@@ -556,6 +646,7 @@ function BadgeCard({
   cardBg,
   border,
   subtext,
+  selectedStyle,
   selected,
   onSelect,
 }: {
@@ -565,6 +656,7 @@ function BadgeCard({
   cardBg: string;
   border: string;
   subtext: string;
+  selectedStyle: StyleOption;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -572,6 +664,10 @@ function BadgeCard({
   const { callToolAsync, isPending: isRendering } = useCallTool("render-badge-png");
   const [hover, setHover] = useState(false);
   const firstName = badge.name.split(" ")[0];
+  const avatarSvg = useMemo(
+    () => generateAvatar(badge.name, selectedStyle),
+    [badge.name, selectedStyle],
+  );
 
   const downloadBadge = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -581,12 +677,7 @@ function BadgeCard({
         role: badge.role,
         accentHex: accent,
         eventTitle: event.title,
-        avatarStyle: event.avatarStyle as
-          | "lorelei"
-          | "notionists"
-          | "bottts"
-          | "shapes"
-          | undefined,
+        avatarStyle: selectedStyle,
       });
       const pngDataUrl = res.structuredContent?.pngDataUrl;
       if (pngDataUrl) {
@@ -614,7 +705,7 @@ function BadgeCard({
           resource: {
             uri: `file:///${slugify(badge.name)}-badge.svg`,
             mimeType: "image/svg+xml",
-            text: composeBadgeSvg(badge, event, accent),
+            text: composeBadgeSvg(badge, event, accent, avatarSvg),
           },
         },
       ],
@@ -691,9 +782,14 @@ function BadgeCard({
             }}
           >
             <img
-              src={svgToDataUrl(badge.avatarSvg)}
+              key={selectedStyle}
+              src={svgToDataUrl(avatarSvg)}
               alt={`${badge.name} avatar`}
-              style={{ width: "100%", height: "100%" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                animation: "lineup-fade 240ms ease",
+              }}
             />
           </div>
         </div>
@@ -783,11 +879,16 @@ function slugify(s: string): string {
     .slice(0, 60) || "lineup";
 }
 
-function composeBadgeSvg(badge: Badge, event: EventInfo, accent: string): string {
+function composeBadgeSvg(
+  badge: Badge,
+  event: EventInfo,
+  accent: string,
+  avatarSvg: string,
+): string {
   const w = 480;
   const h = 640;
   const firstName = badge.name.split(" ")[0];
-  const avatarInner = stripSvgOuter(badge.avatarSvg);
+  const avatarInner = stripSvgOuter(avatarSvg);
   const qrInner = stripSvgOuter(badge.vcardQrSvg);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">

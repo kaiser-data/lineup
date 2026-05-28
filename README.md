@@ -8,7 +8,7 @@ Lineup is a ChatGPT App (built on [Alpic Skybridge](https://docs.skybridge.tech)
 
 ![Four identity badges across four avatar styles: notionists, bottts, lorelei, shapes](assets/badge-styles.png)
 
-Built for Berlin Hack Night (May 2026) using the Skybridge framework + OpenAI Codex.
+Built for Berlin Hack Night (May 2026) with the Skybridge framework. Coded mainly with **Claude Code**, with **OpenAI Codex** in support.
 
 ---
 
@@ -74,14 +74,14 @@ Nothing is stored in any database. Browsers never send URL fragments to servers,
 
 ## Architecture
 
-```
-ChatGPT ──/mcp (No Auth)──► Alpic Cloud · Skybridge MCP server
-                              ├─ generate-lineup   (event card + badges + QR + .ics)
-                              ├─ render-badge-png   (Satori + Resvg → PNG)
-                              └─ React view (renders inside ChatGPT)
-
-Share:  view encodes payload → URL #fragment → QR
-        GitHub Pages static page decodes + regenerates (no backend, nothing stored)
+```mermaid
+flowchart LR
+    U([You · one sentence]) --> C[ChatGPT]
+    C -- /mcp · No Auth --> S[Skybridge MCP server<br/>on Alpic Cloud]
+    S --> T1[generate-lineup<br/>card · badges · QR · .ics]
+    S --> T2[render-badge-png<br/>Satori + Resvg]
+    S --> V[React view<br/>inside ChatGPT]
+    V -- share link #fragment --> P[GitHub Pages<br/>regenerates pack<br/>nothing stored]
 ```
 
 Everything is deterministic and pure-JS where it matters (avatars, QRs, calendar), so the same input always produces the same pack — which is exactly why the shareable page can regenerate it from the link alone.

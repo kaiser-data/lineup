@@ -73,8 +73,15 @@
 
 <script type="module">
 import { createAvatar } from 'https://esm.sh/@dicebear/core@9.4.2';
-import { lorelei } from 'https://esm.sh/@dicebear/collection@9.4.2';
+import * as collection from 'https://esm.sh/@dicebear/collection@9.4.2';
 import QRCode from 'https://esm.sh/qrcode@1.5.4';
+
+const STYLES = {
+  lorelei: collection.lorelei,
+  notionists: collection.notionists,
+  bottts: collection.bottts,
+  shapes: collection.shapes,
+};
 
 const app = document.getElementById('app');
 
@@ -160,6 +167,7 @@ async function render(){
     accentHex: payload.accentHex || '#6366f1',
     rsvpUrl: payload.rsvpUrl || '',
     durationHours: payload.durationHours || 3,
+    avatarStyle: payload.avatarStyle && STYLES[payload.avatarStyle] ? payload.avatarStyle : 'lorelei',
   };
   const attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
   document.documentElement.style.setProperty('--accent', ev.accentHex);
@@ -205,7 +213,7 @@ async function render(){
     const name = a.name || 'Guest';
     const role = a.role || 'Guest';
     const first = String(name).split(' ')[0];
-    const avatarSvg = createAvatar(lorelei, { seed: name, size: 256, backgroundColor: ['transparent'] }).toString();
+    const avatarSvg = createAvatar(STYLES[ev.avatarStyle], { seed: name, size: 256, backgroundColor: ['transparent'] }).toString();
     const vcardQrSvg = await QRCode.toString(buildVcard({ name, role, eventTitle: ev.title }), { type:'svg', margin:0, color:{ dark:'#111111', light:'#00000000' } });
 
     const card = document.createElement('div');

@@ -1,6 +1,6 @@
 import { McpServer } from "skybridge/server";
 import { z } from "zod";
-import { generateAvatarSvg } from "./lib/avatars.js";
+import { generateAvatarSvg, AVATAR_STYLES, DEFAULT_AVATAR_STYLE } from "./lib/avatars.js";
 import { generateQrSvg } from "./lib/qr.js";
 import { buildVcard } from "./lib/vcard.js";
 import { buildIcs } from "./lib/ics.js";
@@ -43,6 +43,12 @@ const server = new McpServer(
         .number()
         .optional()
         .describe("Event duration in hours (default 3)"),
+      avatarStyle: z
+        .enum(AVATAR_STYLES)
+        .optional()
+        .describe(
+          "Avatar style for the whole crew. 'lorelei' = monochrome line art (default, calm/professional), 'notionists' = Notion-style sketch (friendly meetups), 'bottts' = colorful robots (hackathons / playful trading-card vibe), 'shapes' = abstract geometric (anonymous voting / ballots).",
+        ),
       attendees: z
         .array(attendeeSchema)
         .min(1)
@@ -78,16 +84,18 @@ const server = new McpServer(
     accentHex,
     rsvpUrl,
     durationHours,
+    avatarStyle,
     attendees,
   }) => {
     const accent = accentHex ?? "#6366f1";
+    const style = avatarStyle ?? DEFAULT_AVATAR_STYLE;
     const icsString = buildIcs({ title, dateISO, venue, durationHours });
     const eventQrPayload = rsvpUrl ?? `EVENT:${title}`;
     const eventQrSvg = await generateQrSvg(eventQrPayload, accent);
 
     const badges = await Promise.all(
       attendees.map(async ({ name, role }) => {
-        const avatarSvg = generateAvatarSvg(name);
+        const avatarSvg = generateAvatarSvg(name, style);
         const vcard = buildVcard({ name, role, eventTitle: title });
         const vcardQrSvg = await generateQrSvg(vcard, "#111111");
         return { name, role: role ?? "Guest", avatarSvg, vcardQrSvg };
@@ -101,6 +109,7 @@ const server = new McpServer(
         venue: venue ?? null,
         accentHex: accent,
         rsvpUrl: rsvpUrl ?? null,
+        avatarStyle: style,
         icsString,
         qrSvg: eventQrSvg,
       },
@@ -127,6 +136,10 @@ const server = new McpServer(
       role: z.string().optional().describe("Role label"),
       accentHex: z.string().optional().describe("Accent hex color"),
       eventTitle: z.string().optional().describe("Event title (printed on the badge)"),
+      avatarStyle: z
+        .enum(AVATAR_STYLES)
+        .optional()
+        .describe("Avatar style (same options as generate-lineup). Match the event's style."),
     },
     annotations: {
       title: "Download badge PNG",
@@ -139,8 +152,8 @@ const server = new McpServer(
       "openai/toolInvocation/invoked": "Badge ready.",
     },
   },
-  async ({ name, role, accentHex, eventTitle }) => {
-    const pngDataUrl = await renderBadgePng({ name, role, accentHex, eventTitle });
+  async ({ name, role, accentHex, eventTitle, avatarStyle }) => {
+    const pngDataUrl = await renderBadgePng({ name, role, accentHex, eventTitle, avatarStyle });
     return {
       structuredContent: { pngDataUrl },
       content: [{ type: "text", text: `Rendered badge PNG for ${name}.` }],

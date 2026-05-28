@@ -25,6 +25,7 @@ function buildShareUrl(input: {
   venue?: string | null;
   accentHex?: string | null;
   rsvpUrl?: string | null;
+  avatarStyle?: string | null;
   durationHours?: number;
   attendees: { name: string; role?: string }[];
 }): string {
@@ -34,6 +35,7 @@ function buildShareUrl(input: {
     venue: input.venue || undefined,
     accentHex: input.accentHex || undefined,
     rsvpUrl: input.rsvpUrl || undefined,
+    avatarStyle: input.avatarStyle || undefined,
     durationHours: input.durationHours,
     attendees: input.attendees.map((a) => ({ name: a.name, role: a.role })),
   };
@@ -53,6 +55,7 @@ type EventInfo = {
   venue: string | null;
   accentHex: string;
   rsvpUrl: string | null;
+  avatarStyle?: string;
   icsString: string;
   qrSvg: string;
 };
@@ -202,6 +205,7 @@ function LineupCard({
         venue: event.venue,
         accentHex: event.accentHex,
         rsvpUrl: event.rsvpUrl,
+        avatarStyle: event.avatarStyle,
         attendees: badges.map((b) => ({ name: b.name, role: b.role })),
       }),
     [event, badges],
@@ -577,6 +581,12 @@ function BadgeCard({
         role: badge.role,
         accentHex: accent,
         eventTitle: event.title,
+        avatarStyle: event.avatarStyle as
+          | "lorelei"
+          | "notionists"
+          | "bottts"
+          | "shapes"
+          | undefined,
       });
       const pngDataUrl = res.structuredContent?.pngDataUrl;
       if (pngDataUrl) {

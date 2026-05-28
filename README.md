@@ -4,9 +4,9 @@
 
 Lineup is a ChatGPT App (built on [Alpic Skybridge](https://docs.skybridge.tech)) that takes a freeform event description and generates a Luma-style **event card**, an **identity badge** for every attendee (generated avatar + role + scannable vCard QR), an **RSVP QR**, and a calendar **`.ics`** — in about ten seconds, in the conversation you're already in.
 
-> *"Announce Friday's panel — speakers Lea, Marco and Priya — accent red."*
+> *"Announce Friday's panel — speakers Lea, Marco and Priya — accent red, notionists style."*
 
-<img src="assets/badge-lea.png" width="280" alt="A Lineup identity badge: avatar, name, role pill, and a vCard QR" />
+![Four identity badges across four avatar styles: notionists, bottts, lorelei, shapes](assets/badge-styles.png)
 
 Built for Berlin Hack Night (May 2026) using the Skybridge framework + OpenAI Codex.
 
@@ -22,8 +22,20 @@ It **complements** Luma / Mailchimp / your CMS rather than replacing them.
 
 - **Event card** — title, date, venue, accent gradient, "Add to calendar", RSVP QR
 - **Identity badges** — one per attendee: deterministic [DiceBear](https://dicebear.com) avatar in a halo, first name, role pill, vCard QR (scan → save contact), gradient accent border
+- **Pick the avatar style from the prompt** — four styles ship; tell the LLM the vibe and it picks (see below)
 - **PNG badge export** — download any badge as a real 480×640 "trading card" PNG, composed server-side with [Satori](https://github.com/vercel/satori) + [Resvg](https://github.com/yisibl/resvg-js)
 - **Shareable event page** — a scannable link that opens the whole pack as a public web page (see below)
+
+### Avatar styles
+
+The whole crew renders in one consistent style. Just say what you want — the LLM picks it from your sentence.
+
+| Style | Vibe | Try saying… |
+|---|---|---|
+| **`lorelei`** *(default)* | Monochrome line art — calm, professional | *"…default style"* (or omit) |
+| **`notionists`** | Notion-style sketch — friendly meetups | *"…in notionists style"* |
+| **`bottts`** | Colorful robots — playful trading cards | *"…make it a hackathon robot roster"* |
+| **`shapes`** | Abstract geometric — anonymous-looking | *"…anonymous voting cards"* |
 
 ## One primitive, many use cases
 

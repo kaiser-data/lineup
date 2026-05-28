@@ -1,0 +1,198 @@
+{
+  "_comment": "Test payloads for the Lineup MCP server. Use with: curl -s -X POST http://localhost:3000/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d @<payload>",
+
+  "tools_list": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list"
+  },
+
+  "berlin_hack_night": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Berlin Hack Night",
+        "dateISO": "2026-05-28T18:00:00+02:00",
+        "venue": "Mindspace Krausenstrasse, Berlin",
+        "accentHex": "#ef4444",
+        "durationHours": 3,
+        "attendees": [
+          { "name": "Marty Kaiser", "role": "Host" },
+          { "name": "Lea Schmidt",  "role": "Judge" },
+          { "name": "Tomás Ruiz",   "role": "Hacker" }
+        ]
+      }
+    }
+  },
+
+  "launch_party": {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Series A Launch",
+        "dateISO": "2026-06-12T19:30:00+02:00",
+        "venue": "Soho House Berlin",
+        "accentHex": "#0ea5e9",
+        "rsvpUrl": "https://lu.ma/series-a-launch",
+        "durationHours": 4,
+        "attendees": [
+          { "name": "Ada Lovelace",    "role": "CEO" },
+          { "name": "Grace Hopper",    "role": "CTO" },
+          { "name": "Alan Turing",     "role": "Investor" },
+          { "name": "Margaret Hamilton","role": "Advisor" },
+          { "name": "Linus Torvalds",  "role": "Guest" },
+          { "name": "Rebecca Solnit",  "role": "Press" }
+        ]
+      }
+    }
+  },
+
+  "tiny_dinner": {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Founders Dinner",
+        "dateISO": "2026-05-30T20:00:00+02:00",
+        "venue": "Mr. Susan, Berlin",
+        "accentHex": "#a855f7",
+        "attendees": [
+          { "name": "Sara", "role": "Host" },
+          { "name": "Jonas" },
+          { "name": "Mei",  "role": "Guest" }
+        ]
+      }
+    }
+  },
+
+  "wedding_after_party": {
+    "jsonrpc": "2.0",
+    "id": 5,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Käthe & Theo · After-Party",
+        "dateISO": "2026-08-15T22:00:00+02:00",
+        "venue": "Sisyphos, Berlin",
+        "accentHex": "#f59e0b",
+        "rsvpUrl": "https://kthe.party/yes",
+        "durationHours": 6,
+        "attendees": [
+          { "name": "Käthe Hoffmann", "role": "Bride" },
+          { "name": "Theo Becker",    "role": "Groom" },
+          { "name": "Anna Weiss",     "role": "Maid of honor" },
+          { "name": "Felix Bauer",    "role": "Best man" },
+          { "name": "Greta Maier",    "role": "DJ" },
+          { "name": "Paul Klein",     "role": "Photographer" },
+          { "name": "Mira Sokolova",  "role": "Guest" },
+          { "name": "Yusuf Demir",    "role": "Guest" }
+        ]
+      }
+    }
+  },
+
+  "edge_minimal": {
+    "_comment": "Smallest valid payload — only required fields.",
+    "jsonrpc": "2.0",
+    "id": 6,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Coffee",
+        "dateISO": "2026-06-01T10:00:00Z",
+        "attendees": [
+          { "name": "Marty" }
+        ]
+      }
+    }
+  },
+
+  "usecase_voting": {
+    "_comment": "Use case: voting / ballot — each participant gets a unique scannable card.",
+    "jsonrpc": "2.0",
+    "id": 7,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Board Vote · 2026 Budget",
+        "dateISO": "2026-06-18T17:00:00+02:00",
+        "venue": "Town Hall, Room 2B",
+        "accentHex": "#16a34a",
+        "rsvpUrl": "https://vote.example.org/budget-2026",
+        "durationHours": 1,
+        "attendees": [
+          { "name": "Nadia Brandt",  "role": "Voter · Seat 1" },
+          { "name": "Omar Haddad",   "role": "Voter · Seat 2" },
+          { "name": "Priya Nair",    "role": "Voter · Seat 3" },
+          { "name": "Stefan Vogel",  "role": "Voter · Seat 4" },
+          { "name": "Clara Jensen",  "role": "Chair" }
+        ]
+      }
+    }
+  },
+
+  "usecase_conference_badges": {
+    "_comment": "Use case: ID / access badges for a conference.",
+    "jsonrpc": "2.0",
+    "id": 8,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "DevConf Berlin 2026",
+        "dateISO": "2026-09-24T09:00:00+02:00",
+        "venue": "STATION Berlin",
+        "accentHex": "#2563eb",
+        "rsvpUrl": "https://devconf.berlin/check-in",
+        "durationHours": 8,
+        "attendees": [
+          { "name": "Dr. Hannah Reyes", "role": "Speaker" },
+          { "name": "Marco Bianchi",    "role": "Attendee" },
+          { "name": "Aisha Okonkwo",    "role": "Crew" },
+          { "name": "Liam Foster",      "role": "Press" },
+          { "name": "Yuki Tanaka",      "role": "Sponsor" },
+          { "name": "Elena Petrova",    "role": "Volunteer" }
+        ]
+      }
+    }
+  },
+
+  "usecase_announcement": {
+    "_comment": "Use case: fast announcement — spin up an event in one sentence (the Luma-killer demo).",
+    "jsonrpc": "2.0",
+    "id": 9,
+    "method": "tools/call",
+    "params": {
+      "name": "generate-lineup",
+      "arguments": {
+        "title": "Friday Rooftop Drinks",
+        "dateISO": "2026-05-29T18:30:00+02:00",
+        "venue": "Klunkerkranich, Neukölln",
+        "accentHex": "#ec4899",
+        "rsvpUrl": "https://lu.ma/rooftop-friday",
+        "durationHours": 4,
+        "attendees": [
+          { "name": "The whole team", "role": "Invited" }
+        ]
+      }
+    }
+  },
+
+  "chatgpt_prompts": {
+    "_comment": "Type these into ChatGPT after the Lineup connector is added. Three distinct use cases.",
+    "usecase_voting": "@Lineup Make voting cards for a board budget vote on June 18 at 5pm in Town Hall Room 2B, accent green, RSVP/ballot link https://vote.example.org/budget-2026 — voters Nadia (Seat 1), Omar (Seat 2), Priya (Seat 3), Stefan (Seat 4), and Clara as Chair.",
+    "usecase_conference_badges": "@Lineup Generate access badges for DevConf Berlin 2026 on Sept 24, 9am at STATION Berlin, accent blue, check-in link https://devconf.berlin/check-in — Dr. Hannah Reyes (Speaker), Marco Bianchi (Attendee), Aisha Okonkwo (Crew), Liam Foster (Press), Yuki Tanaka (Sponsor), Elena Petrova (Volunteer).",
+    "usecase_announcement": "@Lineup Throw together Friday Rooftop Drinks tomorrow 6:30pm at Klunkerkranich Neukölln, accent pink, RSVP https://lu.ma/rooftop-friday — invite the whole team."
+  }
+}

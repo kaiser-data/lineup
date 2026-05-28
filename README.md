@@ -26,9 +26,12 @@ It **complements** Luma / Mailchimp / your CMS rather than replacing them.
 - **PNG badge export** — download any badge as a real 480×640 "trading card" PNG, composed server-side with [Satori](https://github.com/vercel/satori) + [Resvg](https://github.com/yisibl/resvg-js)
 - **Shareable event page** — a scannable link that opens the whole pack as a public web page (see below)
 
-### Avatar styles
+### Avatar styles — pick from the prompt, or flip them live
 
-The whole crew renders in one consistent style. Just say what you want — the LLM picks it from your sentence.
+The whole crew renders in one consistent style. Two ways to set it:
+
+1. **From the sentence** — the LLM picks the style from your prompt and passes it as an argument.
+2. **Live in the view** — a row of four Style chips above the badges. Click → every avatar flips in place with a soft fade. The PNG download and the share link follow whatever you've picked.
 
 | Style | Vibe | Try saying… |
 |---|---|---|

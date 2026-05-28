@@ -66,7 +66,6 @@ const server = new McpServer(
     },
     view: {
       component: "generate-lineup",
-      domain: "https://skybridge.tech",
       description: "Event card + identity badge grid",
       csp: {
         resourceDomains: [

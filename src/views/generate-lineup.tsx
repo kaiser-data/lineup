@@ -1,11 +1,43 @@
 import "../index.css";
 import { useMemo, useState } from "react";
 import { useDownload, useLayout, useViewState } from "skybridge/web";
+import { QRCodeSVG } from "qrcode.react";
 import { useToolInfo, useCallTool } from "../helpers.js";
+
+const SHARE_BASE = "https://kaiser-data.github.io/lineup/";
 
 function base64FromDataUrl(dataUrl: string): string {
   const comma = dataUrl.indexOf(",");
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+}
+
+function encodeSharePayload(p: unknown): string {
+  const json = JSON.stringify(p);
+  const bytes = new TextEncoder().encode(json);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function buildShareUrl(input: {
+  title: string;
+  dateISO: string;
+  venue?: string | null;
+  accentHex?: string | null;
+  rsvpUrl?: string | null;
+  durationHours?: number;
+  attendees: { name: string; role?: string }[];
+}): string {
+  const payload = {
+    title: input.title,
+    dateISO: input.dateISO,
+    venue: input.venue || undefined,
+    accentHex: input.accentHex || undefined,
+    rsvpUrl: input.rsvpUrl || undefined,
+    durationHours: input.durationHours,
+    attendees: input.attendees.map((a) => ({ name: a.name, role: a.role })),
+  };
+  return `${SHARE_BASE}#${encodeSharePayload(payload)}`;
 }
 
 type Badge = {
@@ -162,6 +194,18 @@ function LineupCard({
   const { event, badges } = data;
   const { day, time } = useMemo(() => formatDate(event.dateISO), [event.dateISO]);
   const accent = event.accentHex;
+  const shareUrl = useMemo(
+    () =>
+      buildShareUrl({
+        title: event.title,
+        dateISO: event.dateISO,
+        venue: event.venue,
+        accentHex: event.accentHex,
+        rsvpUrl: event.rsvpUrl,
+        attendees: badges.map((b) => ({ name: b.name, role: b.role })),
+      }),
+    [event, badges],
+  );
   const surface = isDark ? "#0b0b0f" : "#fafaf7";
   const cardBg = isDark ? "#15151c" : "#ffffff";
   const subtext = isDark ? "#a1a1aa" : "#52525b";
@@ -193,6 +237,7 @@ function LineupCard({
         border={border}
         subtext={subtext}
         accent={accent}
+        shareUrl={shareUrl}
       />
       <BadgeGrid
         event={event}
@@ -216,6 +261,7 @@ function EventHeader({
   border,
   subtext,
   accent,
+  shareUrl,
 }: {
   event: EventInfo;
   day: string;
@@ -224,8 +270,20 @@ function EventHeader({
   border: string;
   subtext: string;
   accent: string;
+  shareUrl: string;
 }) {
   const { download } = useDownload();
+  const [copied, setCopied] = useState(false);
+
+  const copyShare = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // clipboard may be blocked in the iframe — the QR + visible link still work
+    }
+  };
 
   const downloadIcs = async () => {
     await download({
@@ -370,6 +428,56 @@ function EventHeader({
             alt="Event RSVP QR"
             style={{ width: "100%", height: "100%" }}
           />
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          marginTop: 22,
+          paddingTop: 20,
+          borderTop: `1px solid ${border}`,
+          display: "flex",
+          gap: 16,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            background: "#fff",
+            padding: 8,
+            borderRadius: 12,
+            border: `1px solid ${border}`,
+            flexShrink: 0,
+            lineHeight: 0,
+          }}
+        >
+          <QRCodeSVG value={shareUrl} size={96} level="M" />
+        </div>
+        <div style={{ flex: "1 1 220px", minWidth: 200 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+            Share this page
+          </div>
+          <div style={{ color: subtext, fontSize: 13, marginBottom: 10 }}>
+            Scan to open the live event page on a phone — or copy the link. The
+            whole pack rides in the link; nothing is stored.
+          </div>
+          <button
+            onClick={copyShare}
+            style={{
+              background: "transparent",
+              color: "inherit",
+              border: `1px solid ${border}`,
+              borderRadius: 999,
+              padding: "8px 16px",
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            {copied ? "Copied ✓" : "Copy share link"}
+          </button>
         </div>
       </div>
     </div>

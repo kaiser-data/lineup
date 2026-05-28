@@ -59,3 +59,7 @@ ChatGPT ──/mcp (No Auth)──► Alpic tunnel ──► Skybridge server (l
 - **Submission:** `npm run deploy` → **Alpic Cloud** (free). Pure-JS / edge-safe → Cloudflare Workers fallback. No accounts, no scraping.
 
 ### *Lineup: the fastest way to turn a sentence into something everyone can hold in their hand.*
+
+**Code:** github.com/kaiser-data/lineup
+
+![repo QR](repo-qr.png)

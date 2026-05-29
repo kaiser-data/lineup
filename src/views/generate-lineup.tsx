@@ -110,20 +110,24 @@ async function buildShareUrl(input: {
   durationHours?: number;
   attendees: { name: string; role?: string; seed?: string; gender?: Gender | null }[];
 }): Promise<string> {
+  // Short keys keep the link (and therefore the QR) compact. Schema v2:
+  // t=title d=dateISO v=venue a=accentHex u=rsvpUrl y=avatarStyle h=durationHours
+  // p=attendees [{ n=name r=role s=seed g=gender }]. Omitted fields fall back to
+  // defaults on the share page. The share page also still reads legacy long keys.
   const payload = {
-    title: input.title,
-    dateISO: input.dateISO,
-    venue: input.venue || undefined,
-    accentHex: input.accentHex || undefined,
-    rsvpUrl: input.rsvpUrl || undefined,
-    avatarStyle: input.avatarStyle || undefined,
-    durationHours: input.durationHours,
-    attendees: input.attendees.map((a) => ({
-      name: a.name,
-      role: a.role,
+    t: input.title,
+    d: input.dateISO,
+    ...(input.venue ? { v: input.venue } : {}),
+    ...(input.accentHex ? { a: input.accentHex } : {}),
+    ...(input.rsvpUrl ? { u: input.rsvpUrl } : {}),
+    ...(input.avatarStyle ? { y: input.avatarStyle } : {}),
+    ...(input.durationHours ? { h: input.durationHours } : {}),
+    p: input.attendees.map((a) => ({
+      n: a.name,
+      ...(a.role ? { r: a.role } : {}),
       // only include when a re-roll changed it, to keep the link short
-      ...(a.seed && a.seed !== a.name ? { seed: a.seed } : {}),
-      ...(a.gender && a.gender !== "x" ? { gender: a.gender } : {}),
+      ...(a.seed && a.seed !== a.name ? { s: a.seed } : {}),
+      ...(a.gender && a.gender !== "x" ? { g: a.gender } : {}),
     })),
   };
   return `${SHARE_BASE}#${await encodeSharePayloadCompressed(payload)}`;
@@ -680,7 +684,7 @@ function EventHeader({
             lineHeight: 0,
           }}
         >
-          <QRCodeSVG value={shareUrl} size={96} level="M" />
+          <QRCodeSVG value={shareUrl} size={128} level="L" />
         </div>
         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>

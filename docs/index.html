@@ -173,16 +173,25 @@ async function render(){
     payload = await decodePayload(location.hash);
   } catch { return renderEmpty('This link could not be read.'); }
 
+  // Accept both the compact v2 short keys (t/d/v/a/u/y/h/p[{n,r,s,g}]) and the
+  // legacy long keys (title/dateISO/.../attendees[{name,role,seed,gender}]).
+  const P = payload || {};
   const ev = {
-    title: payload.title || 'Event',
-    dateISO: payload.dateISO,
-    venue: payload.venue || '',
-    accentHex: payload.accentHex || '#6366f1',
-    rsvpUrl: payload.rsvpUrl || '',
-    durationHours: payload.durationHours || 3,
-    avatarStyle: payload.avatarStyle && STYLES[payload.avatarStyle] ? payload.avatarStyle : 'lorelei',
+    title: P.t ?? P.title ?? 'Event',
+    dateISO: P.d ?? P.dateISO,
+    venue: P.v ?? P.venue ?? '',
+    accentHex: P.a ?? P.accentHex ?? '#6366f1',
+    rsvpUrl: P.u ?? P.rsvpUrl ?? '',
+    durationHours: P.h ?? P.durationHours ?? 3,
+    avatarStyle: (() => { const s = P.y ?? P.avatarStyle; return s && STYLES[s] ? s : 'lorelei'; })(),
   };
-  const attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
+  const rawAttendees = Array.isArray(P.p) ? P.p : Array.isArray(P.attendees) ? P.attendees : [];
+  const attendees = rawAttendees.map(a => ({
+    name: a.n ?? a.name,
+    role: a.r ?? a.role,
+    seed: a.s ?? a.seed,
+    gender: a.g ?? a.gender,
+  }));
   document.documentElement.style.setProperty('--accent', ev.accentHex);
   document.title = `${ev.title} · Lineup`;
 

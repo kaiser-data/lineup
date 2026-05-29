@@ -21,20 +21,41 @@ const STYLE_LABELS: Record<StyleOption, string> = {
   bottts: "Bottts",
   shapes: "Shapes",
 };
+/**
+ * Resolve a DiceBear collection by name **at call time**, not at module-eval
+ * time. The previous `const STYLE_DEFS = { lorelei, … }` captured the collection
+ * bindings during module init — and under the production bundler (Vite 8 /
+ * Rolldown) those bindings can still be `undefined` at that point due to
+ * module-initialization ordering, so `createAvatar(undefined, …)` threw
+ * "Cannot read properties of undefined (reading 'schema')" and crashed the
+ * whole view. Reading the imports inside the function defers the lookup until
+ * after all modules have initialized.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const STYLE_DEFS: Record<StyleOption, any> = {
-  lorelei,
-  notionists,
-  bottts,
-  shapes,
-};
+function styleDef(style: StyleOption): any {
+  const defs: Record<StyleOption, unknown> = { lorelei, notionists, bottts, shapes };
+  return defs[style] ?? defs.lorelei;
+}
 
-function generateAvatar(seed: string, style: StyleOption): string {
-  return createAvatar(STYLE_DEFS[style], {
-    seed,
-    size: 256,
-    backgroundColor: ["transparent"],
-  }).toString();
+/**
+ * Generate an avatar SVG client-side for instant style flipping. Falls back to
+ * the server-rendered SVG (`fallbackSvg`) if the collection can't be resolved
+ * or DiceBear throws, so the badge always renders something valid.
+ */
+function generateAvatar(seed: string, style: StyleOption, fallbackSvg = ""): string {
+  try {
+    const def = styleDef(style);
+    if (def) {
+      return createAvatar(def, {
+        seed,
+        size: 256,
+        backgroundColor: ["transparent"],
+      }).toString();
+    }
+  } catch {
+    // fall through to the server-provided SVG
+  }
+  return fallbackSvg;
 }
 
 function base64FromDataUrl(dataUrl: string): string {
@@ -695,8 +716,8 @@ function BadgeCard({
   const [hover, setHover] = useState(false);
   const firstName = badge.name.split(" ")[0];
   const avatarSvg = useMemo(
-    () => generateAvatar(badge.name, selectedStyle),
-    [badge.name, selectedStyle],
+    () => generateAvatar(badge.name, selectedStyle, badge.avatarSvg),
+    [badge.name, selectedStyle, badge.avatarSvg],
   );
 
   const downloadBadge = async (e: React.MouseEvent) => {

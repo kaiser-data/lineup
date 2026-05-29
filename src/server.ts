@@ -1,4 +1,5 @@
 import { McpServer } from "skybridge/server";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { generateAvatarSvg, AVATAR_STYLES, DEFAULT_AVATAR_STYLE } from "./lib/avatars.js";
 import { generateQrSvg } from "./lib/qr.js";
@@ -53,6 +54,30 @@ const server = new McpServer(
         .array(attendeeSchema)
         .min(1)
         .describe("Attendees to generate identity badges for"),
+    },
+    outputSchema: {
+      event: z
+        .object({
+          title: z.string(),
+          dateISO: z.string(),
+          venue: z.string().nullable(),
+          accentHex: z.string(),
+          rsvpUrl: z.string().nullable(),
+          avatarStyle: z.string(),
+          icsString: z.string(),
+          qrSvg: z.string(),
+        })
+        .describe("Event card data (title, date, venue, accent, RSVP QR, .ics)"),
+      badges: z
+        .array(
+          z.object({
+            name: z.string(),
+            role: z.string(),
+            avatarSvg: z.string(),
+            vcardQrSvg: z.string(),
+          }),
+        )
+        .describe("One identity badge per attendee"),
     },
     annotations: {
       title: "Generate an event Lineup",
@@ -140,6 +165,11 @@ const server = new McpServer(
         .optional()
         .describe("Avatar style (same options as generate-lineup). Match the event's style."),
     },
+    outputSchema: {
+      pngDataUrl: z
+        .string()
+        .describe("The rendered badge as a base64 PNG data URL"),
+    },
     annotations: {
       title: "Download badge PNG",
       readOnlyHint: true,
@@ -164,6 +194,53 @@ const server = new McpServer(
 if (process.env.NODE_ENV === "production") {
   const { default: manifest } = await import("./vite-manifest.js");
   server.setViteManifest(manifest);
+}
+
+// ── Legacy template absorber ────────────────────────────────────────────────
+// Skybridge advertises a content-hashed view URI (…html?v=<hash>) and the server
+// only serves the *current* hash. After any view change + redeploy, ChatGPT (and
+// other Apps SDK hosts) messages that cached an older hash fail to render with
+// "Failed to fetch template" — the stale URI now 404s. Per the OpenAI Apps SDK
+// best practice (stable advertised URI + a ResourceTemplate that absorbs legacy
+// versioned URIs), we register non-listed catch-all templates that delegate to
+// the current registered handler, so previously-rendered widgets re-resolve to
+// the latest content instead of breaking. New tool calls keep using the exact
+// current URI (which wins via exact-match), so this is purely additive.
+{
+  const registry = (
+    server as unknown as {
+      _registeredResources: Record<
+        string,
+        { readCallback: (uri: URL, extra: unknown) => unknown }
+      >;
+    }
+  )._registeredResources;
+
+  const currentHandlerFor = (base: string) =>
+    Object.entries(registry).find(([uri]) => uri.startsWith(base))?.[1]
+      ?.readCallback;
+
+  const absorbLegacy = (name: string, base: string) => {
+    const handler = currentHandlerFor(base);
+    if (!handler) return; // dev / no production hash → nothing to absorb
+    // `{?v}` matches both the unversioned URI and any prior ?v=<hash>.
+    server.registerResource(
+      name,
+      new ResourceTemplate(`${base}{?v}`, { list: undefined }),
+      {},
+      ((uri: URL, _vars: unknown, extra: unknown) =>
+        handler(uri, extra)) as never,
+    );
+  };
+
+  absorbLegacy(
+    "generate-lineup-apps-legacy",
+    "ui://views/apps-sdk/generate-lineup.html",
+  );
+  absorbLegacy(
+    "generate-lineup-ext-legacy",
+    "ui://views/ext-apps/generate-lineup.html",
+  );
 }
 
 export default await server.run();

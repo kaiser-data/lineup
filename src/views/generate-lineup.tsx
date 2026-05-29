@@ -1,6 +1,11 @@
 import "../index.css";
-import { useMemo, useState } from "react";
-import { useDownload, useLayout, useViewState } from "skybridge/web";
+import { useMemo, useState, useEffect, useRef } from "react";
+import {
+  useDownload,
+  useLayout,
+  useViewState,
+  useRequestSize,
+} from "skybridge/web";
 import { QRCodeSVG } from "qrcode.react";
 import { createAvatar } from "@dicebear/core";
 import { lorelei, notionists, bottts, shapes } from "@dicebear/collection";
@@ -132,10 +137,33 @@ function formatDate(dateISO: string): { day: string; time: string } {
   }
 }
 
+/**
+ * Report the rendered content height to the host. Skybridge does NOT auto-size
+ * the widget iframe — without this, hosts that start the iframe collapsed
+ * (e.g. the Alpic playground) leave the view at ~0px tall and nothing is
+ * visible, not even the loading skeleton. Pairs `useRequestSize` with a
+ * `ResizeObserver` per the documented pattern.
+ */
+function useAutoSize<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const requestSize = useRequestSize();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const report = () => requestSize({ height: el.scrollHeight });
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [requestSize]);
+  return ref;
+}
+
 export default function GenerateLineup() {
   const { output, isPending } = useToolInfo<"generate-lineup">();
   const { theme } = useLayout();
   const isDark = theme === "dark";
+  const rootRef = useAutoSize<HTMLDivElement>();
 
   const data = output as Output | undefined;
   const initialStyle: StyleOption =
@@ -148,26 +176,28 @@ export default function GenerateLineup() {
     selectedStyle: StyleOption;
   }>({ selectedBadge: null, selectedStyle: initialStyle });
 
-  if (isPending || !output || !data) {
-    return <LineupSkeleton isDark={isDark} />;
-  }
-
   return (
-    <LineupCard
-      data={data}
-      isDark={isDark}
-      selectedBadge={selectedBadge}
-      selectedStyle={selectedStyle}
-      onSelect={(name) =>
-        setViewState((prev) => ({
-          ...prev,
-          selectedBadge: prev.selectedBadge === name ? null : name,
-        }))
-      }
-      onStyle={(s) =>
-        setViewState((prev) => ({ ...prev, selectedStyle: s }))
-      }
-    />
+    <div ref={rootRef}>
+      {isPending || !output || !data ? (
+        <LineupSkeleton isDark={isDark} />
+      ) : (
+        <LineupCard
+          data={data}
+          isDark={isDark}
+          selectedBadge={selectedBadge}
+          selectedStyle={selectedStyle}
+          onSelect={(name) =>
+            setViewState((prev) => ({
+              ...prev,
+              selectedBadge: prev.selectedBadge === name ? null : name,
+            }))
+          }
+          onStyle={(s) =>
+            setViewState((prev) => ({ ...prev, selectedStyle: s }))
+          }
+        />
+      )}
+    </div>
   );
 }
 

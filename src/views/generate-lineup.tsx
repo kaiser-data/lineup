@@ -750,7 +750,7 @@ function BadgeGrid({
           The crew · {badges.length}
         </div>
         <div style={{ color: subtext, fontSize: 12 }}>
-          Tap a badge to focus · scan QR to save contact
+          Click a face to shuffle it · scan QR to save contact
         </div>
       </div>
       <div
@@ -951,6 +951,11 @@ function BadgeCard({
           }}
         >
           <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onShuffle();
+            }}
+            title="Click the face to shuffle it"
             style={{
               width: 92,
               height: 92,
@@ -960,6 +965,9 @@ function BadgeCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              cursor: "pointer",
+              transform: hover ? "scale(1.06)" : "scale(1)",
+              transition: "transform 160ms cubic-bezier(0.2,0.7,0.2,1)",
             }}
           >
             <img

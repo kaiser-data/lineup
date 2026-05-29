@@ -85,15 +85,28 @@ const STYLES = {
 
 const app = document.getElementById('app');
 
-function decodePayload(s) {
-  s = s.replace(/^#/, '').replace(/^d=/, '');
+function b64urlToBytes(s) {
   s = s.replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4) s += '=';
-  const bin = atob(s);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return JSON.parse(new TextDecoder().decode(bytes));
+  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+}
+async function decodePayload(s) {
+  s = s.replace(/^#/, '').replace(/^d=/, '');
+  // "z" prefix = deflate-raw compressed (newer, shorter links); else plain base64.
+  if (s[0] === 'z') {
+    const bytes = b64urlToBytes(s.slice(1));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    const json = await new Response(stream).text();
+    return JSON.parse(json);
+  }
+  return JSON.parse(new TextDecoder().decode(b64urlToBytes(s)));
 }
 
+function genderOptions(gender){
+  if (gender === 'm') return { beardProbability: 100, earringsProbability: 0 };
+  if (gender === 'f') return { beardProbability: 0, earringsProbability: 100 };
+  return {};
+}
 function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function svgDataUrl(svg){ return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); }
 function slugify(s){ return (s||'lineup').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,60) || 'lineup'; }
@@ -157,7 +170,7 @@ async function render(){
   let payload;
   try {
     if (!location.hash || location.hash.length < 3) return renderEmpty('No event in this link.');
-    payload = decodePayload(location.hash);
+    payload = await decodePayload(location.hash);
   } catch { return renderEmpty('This link could not be read.'); }
 
   const ev = {
@@ -213,7 +226,7 @@ async function render(){
     const name = a.name || 'Guest';
     const role = a.role || 'Guest';
     const first = String(name).split(' ')[0];
-    const avatarSvg = createAvatar(STYLES[ev.avatarStyle], { seed: name, size: 256, backgroundColor: ['transparent'] }).toString();
+    const avatarSvg = createAvatar(STYLES[ev.avatarStyle], { seed: a.seed || name, size: 256, backgroundColor: ['transparent'], ...genderOptions(a.gender) }).toString();
     const vcardQrSvg = await QRCode.toString(buildVcard({ name, role, eventTitle: ev.title }), { type:'svg', margin:0, color:{ dark:'#111111', light:'#00000000' } });
 
     const card = document.createElement('div');

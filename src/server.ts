@@ -1,7 +1,7 @@
 import { McpServer } from "skybridge/server";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { generateAvatarSvg, AVATAR_STYLES, DEFAULT_AVATAR_STYLE } from "./lib/avatars.js";
+import { generateAvatarSvg, AVATAR_STYLES, DEFAULT_AVATAR_STYLE, GENDERS } from "./lib/avatars.js";
 import { generateQrSvg } from "./lib/qr.js";
 import { buildVcard } from "./lib/vcard.js";
 import { buildIcs } from "./lib/ics.js";
@@ -13,6 +13,12 @@ const attendeeSchema = z.object({
     .string()
     .optional()
     .describe("Short role label (e.g. 'Host', 'Judge', 'Hacker')"),
+  gender: z
+    .enum(GENDERS)
+    .optional()
+    .describe(
+      "Optional gender hint to make the avatar read more clearly: 'm' (no earrings, may have a beard), 'f' (no beard, may have earrings), or 'x'/omit for neutral. Only affects the lorelei & notionists styles. Infer from the name when the user clearly implies it, otherwise omit.",
+    ),
 });
 
 const server = new McpServer(
@@ -73,6 +79,7 @@ const server = new McpServer(
           z.object({
             name: z.string(),
             role: z.string(),
+            gender: z.string().nullable(),
             avatarSvg: z.string(),
             vcardQrSvg: z.string(),
           }),
@@ -118,11 +125,11 @@ const server = new McpServer(
     const eventQrSvg = await generateQrSvg(eventQrPayload, accent);
 
     const badges = await Promise.all(
-      attendees.map(async ({ name, role }) => {
-        const avatarSvg = generateAvatarSvg(name, style);
+      attendees.map(async ({ name, role, gender }) => {
+        const avatarSvg = generateAvatarSvg(name, style, gender);
         const vcard = buildVcard({ name, role, eventTitle: title });
         const vcardQrSvg = await generateQrSvg(vcard, "#111111");
-        return { name, role: role ?? "Guest", avatarSvg, vcardQrSvg };
+        return { name, role: role ?? "Guest", gender: gender ?? null, avatarSvg, vcardQrSvg };
       }),
     );
 
@@ -164,6 +171,14 @@ const server = new McpServer(
         .enum(AVATAR_STYLES)
         .optional()
         .describe("Avatar style (same options as generate-lineup). Match the event's style."),
+      seed: z
+        .string()
+        .optional()
+        .describe("Avatar seed override (defaults to name). Used when the user re-rolled this face."),
+      gender: z
+        .enum(GENDERS)
+        .optional()
+        .describe("Gender hint (same as generate-lineup). Match the badge."),
     },
     outputSchema: {
       pngDataUrl: z
@@ -181,8 +196,8 @@ const server = new McpServer(
       "openai/toolInvocation/invoked": "Badge ready.",
     },
   },
-  async ({ name, role, accentHex, eventTitle, avatarStyle }) => {
-    const pngDataUrl = await renderBadgePng({ name, role, accentHex, eventTitle, avatarStyle });
+  async ({ name, role, accentHex, eventTitle, avatarStyle, seed, gender }) => {
+    const pngDataUrl = await renderBadgePng({ name, role, accentHex, eventTitle, avatarStyle, seed, gender });
     return {
       structuredContent: { pngDataUrl },
       content: [{ type: "text", text: `Rendered badge PNG for ${name}.` }],

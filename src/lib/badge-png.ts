@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import QRCode from "qrcode";
-import { generateAvatarSvg, type AvatarStyle } from "./avatars.js";
+import { generateAvatarSvg, type AvatarStyle, type Gender } from "./avatars.js";
 import { buildVcard } from "./vcard.js";
 
 const require = createRequire(import.meta.url);
@@ -43,11 +43,13 @@ export async function renderBadgePng(args: {
   accentHex?: string;
   eventTitle?: string;
   avatarStyle?: AvatarStyle;
+  seed?: string;
+  gender?: Gender;
 }): Promise<string> {
-  const { name, role = "Guest", accentHex = "#6366f1", eventTitle, avatarStyle } = args;
+  const { name, role = "Guest", accentHex = "#6366f1", eventTitle, avatarStyle, seed, gender } = args;
   const firstName = name.split(" ")[0];
 
-  const avatarPng = svgToPngDataUrl(generateAvatarSvg(name, avatarStyle), 200);
+  const avatarPng = svgToPngDataUrl(generateAvatarSvg(seed || name, avatarStyle, gender), 200);
   const vcardQrPng = await QRCode.toDataURL(
     buildVcard({ name, role, eventTitle }),
     { type: "image/png", margin: 1, width: 200, color: { dark: "#111111", light: "#ffffff" } },

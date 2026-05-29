@@ -42,7 +42,12 @@ function styleDef(style: StyleOption): any {
  * the server-rendered SVG (`fallbackSvg`) if the collection can't be resolved
  * or DiceBear throws, so the badge always renders something valid.
  */
-function generateAvatar(seed: string, style: StyleOption, fallbackSvg = ""): string {
+function generateAvatar(
+  seed: string,
+  style: StyleOption,
+  fallbackSvg = "",
+  gender?: Gender | null,
+): string {
   try {
     const def = styleDef(style);
     if (def) {
@@ -50,6 +55,7 @@ function generateAvatar(seed: string, style: StyleOption, fallbackSvg = ""): str
         seed,
         size: 256,
         backgroundColor: ["transparent"],
+        ...genderOptions(gender),
       }).toString();
     }
   } catch {
@@ -63,15 +69,38 @@ function base64FromDataUrl(dataUrl: string): string {
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
-function encodeSharePayload(p: unknown): string {
-  const json = JSON.stringify(p);
-  const bytes = new TextEncoder().encode(json);
+function bytesToB64url(bytes: Uint8Array): string {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function buildShareUrl(input: {
+function encodeSharePayload(p: unknown): string {
+  return bytesToB64url(new TextEncoder().encode(JSON.stringify(p)));
+}
+
+/**
+ * Compress the payload with deflate-raw (≈40% shorter link / denser QR) and
+ * mark it with a leading "z" so the share page knows to inflate it. Falls back
+ * to the plain (uncompressed) encoding when CompressionStream is unavailable,
+ * so the link always works. The whole pack still rides in the URL fragment —
+ * nothing is stored.
+ */
+async function encodeSharePayloadCompressed(p: unknown): Promise<string> {
+  const json = JSON.stringify(p);
+  try {
+    if (typeof CompressionStream === "undefined") throw new Error("no CompressionStream");
+    const input = new Blob([json]).stream().pipeThrough(
+      new CompressionStream("deflate-raw"),
+    );
+    const buf = new Uint8Array(await new Response(input).arrayBuffer());
+    return "z" + bytesToB64url(buf);
+  } catch {
+    return encodeSharePayload(p); // plain fallback (decoded as legacy)
+  }
+}
+
+async function buildShareUrl(input: {
   title: string;
   dateISO: string;
   venue?: string | null;
@@ -79,8 +108,8 @@ function buildShareUrl(input: {
   rsvpUrl?: string | null;
   avatarStyle?: string | null;
   durationHours?: number;
-  attendees: { name: string; role?: string }[];
-}): string {
+  attendees: { name: string; role?: string; seed?: string; gender?: Gender | null }[];
+}): Promise<string> {
   const payload = {
     title: input.title,
     dateISO: input.dateISO,
@@ -89,17 +118,37 @@ function buildShareUrl(input: {
     rsvpUrl: input.rsvpUrl || undefined,
     avatarStyle: input.avatarStyle || undefined,
     durationHours: input.durationHours,
-    attendees: input.attendees.map((a) => ({ name: a.name, role: a.role })),
+    attendees: input.attendees.map((a) => ({
+      name: a.name,
+      role: a.role,
+      // only include when a re-roll changed it, to keep the link short
+      ...(a.seed && a.seed !== a.name ? { seed: a.seed } : {}),
+      ...(a.gender && a.gender !== "x" ? { gender: a.gender } : {}),
+    })),
   };
-  return `${SHARE_BASE}#${encodeSharePayload(payload)}`;
+  return `${SHARE_BASE}#${await encodeSharePayloadCompressed(payload)}`;
 }
+
+type Gender = "m" | "f" | "x";
 
 type Badge = {
   name: string;
   role: string;
+  gender?: Gender | null;
   avatarSvg: string;
   vcardQrSvg: string;
 };
+
+/**
+ * DiceBear option overrides for a gender hint — kept in sync with the server's
+ * `genderOptions` (src/lib/avatars.ts) and the share page so a face looks the
+ * same everywhere. Only affects lorelei & notionists.
+ */
+function genderOptions(gender?: Gender | null): Record<string, number> {
+  if (gender === "m") return { beardProbability: 100, earringsProbability: 0 };
+  if (gender === "f") return { beardProbability: 0, earringsProbability: 100 };
+  return {};
+}
 
 type EventInfo = {
   title: string;
@@ -192,10 +241,11 @@ export default function GenerateLineup() {
       ? (data.event.avatarStyle as StyleOption)
       : "lorelei";
 
-  const [{ selectedBadge, selectedStyle }, setViewState] = useViewState<{
+  const [{ selectedBadge, selectedStyle, seedBumps }, setViewState] = useViewState<{
     selectedBadge: string | null;
     selectedStyle: StyleOption;
-  }>({ selectedBadge: null, selectedStyle: initialStyle });
+    seedBumps: Record<string, number>;
+  }>({ selectedBadge: null, selectedStyle: initialStyle, seedBumps: {} });
 
   return (
     <div ref={rootRef}>
@@ -207,6 +257,7 @@ export default function GenerateLineup() {
           isDark={isDark}
           selectedBadge={selectedBadge}
           selectedStyle={selectedStyle}
+          seedBumps={seedBumps ?? {}}
           onSelect={(name) =>
             setViewState((prev) => ({
               ...prev,
@@ -216,10 +267,28 @@ export default function GenerateLineup() {
           onStyle={(s) =>
             setViewState((prev) => ({ ...prev, selectedStyle: s }))
           }
+          onShuffle={(name) =>
+            setViewState((prev) => ({
+              ...prev,
+              seedBumps: {
+                ...(prev.seedBumps ?? {}),
+                [name]: ((prev.seedBumps ?? {})[name] ?? 0) + 1,
+              },
+            }))
+          }
         />
       )}
     </div>
   );
+}
+
+/**
+ * Effective DiceBear seed for an attendee. Re-rolling ("dice") bumps a counter
+ * so the same person gets a fresh face while keeping the crew's shared style.
+ * Bump 0 = the canonical name (matches the server-rendered avatar).
+ */
+function seedFor(name: string, bump: number): string {
+  return bump > 0 ? `${name} ${bump + 1}` : name;
 }
 
 function LineupSkeleton({ isDark }: { isDark: boolean }) {
@@ -275,32 +344,46 @@ function LineupCard({
   isDark,
   selectedBadge,
   selectedStyle,
+  seedBumps,
   onSelect,
   onStyle,
+  onShuffle,
 }: {
   data: Output;
   isDark: boolean;
   selectedBadge: string | null;
   selectedStyle: StyleOption;
+  seedBumps: Record<string, number>;
   onSelect: (name: string) => void;
   onStyle: (s: StyleOption) => void;
+  onShuffle: (name: string) => void;
 }) {
   const { event, badges } = data;
   const { day, time } = useMemo(() => formatDate(event.dateISO), [event.dateISO]);
   const accent = event.accentHex;
-  const shareUrl = useMemo(
-    () =>
-      buildShareUrl({
-        title: event.title,
-        dateISO: event.dateISO,
-        venue: event.venue,
-        accentHex: event.accentHex,
-        rsvpUrl: event.rsvpUrl,
-        avatarStyle: selectedStyle,
-        attendees: badges.map((b) => ({ name: b.name, role: b.role })),
-      }),
-    [event, badges, selectedStyle],
-  );
+  const [shareUrl, setShareUrl] = useState(SHARE_BASE);
+  useEffect(() => {
+    let live = true;
+    buildShareUrl({
+      title: event.title,
+      dateISO: event.dateISO,
+      venue: event.venue,
+      accentHex: event.accentHex,
+      rsvpUrl: event.rsvpUrl,
+      avatarStyle: selectedStyle,
+      attendees: badges.map((b) => ({
+        name: b.name,
+        role: b.role,
+        seed: seedFor(b.name, seedBumps[b.name] ?? 0),
+        gender: b.gender,
+      })),
+    }).then((url) => {
+      if (live) setShareUrl(url);
+    });
+    return () => {
+      live = false;
+    };
+  }, [event, badges, selectedStyle, seedBumps]);
   const surface = isDark ? "#0b0b0f" : "#fafaf7";
   const cardBg = isDark ? "#15151c" : "#ffffff";
   const subtext = isDark ? "#a1a1aa" : "#52525b";
@@ -345,7 +428,9 @@ function LineupCard({
         subtext={subtext}
         selectedBadge={selectedBadge}
         selectedStyle={selectedStyle}
+        seedBumps={seedBumps}
         onSelect={onSelect}
+        onShuffle={onShuffle}
       />
     </div>
   );
@@ -635,7 +720,9 @@ function BadgeGrid({
   subtext,
   selectedBadge,
   selectedStyle,
+  seedBumps,
   onSelect,
+  onShuffle,
 }: {
   event: EventInfo;
   badges: Badge[];
@@ -645,7 +732,9 @@ function BadgeGrid({
   subtext: string;
   selectedBadge: string | null;
   selectedStyle: StyleOption;
+  seedBumps: Record<string, number>;
   onSelect: (name: string) => void;
+  onShuffle: (name: string) => void;
 }) {
   return (
     <div>
@@ -681,8 +770,10 @@ function BadgeGrid({
             border={border}
             subtext={subtext}
             selectedStyle={selectedStyle}
+            seedBump={seedBumps[badge.name] ?? 0}
             selected={selectedBadge === badge.name}
             onSelect={() => onSelect(badge.name)}
+            onShuffle={() => onShuffle(badge.name)}
           />
         ))}
       </div>
@@ -698,8 +789,10 @@ function BadgeCard({
   border,
   subtext,
   selectedStyle,
+  seedBump,
   selected,
   onSelect,
+  onShuffle,
 }: {
   badge: Badge;
   event: EventInfo;
@@ -708,16 +801,20 @@ function BadgeCard({
   border: string;
   subtext: string;
   selectedStyle: StyleOption;
+  seedBump: number;
   selected: boolean;
   onSelect: () => void;
+  onShuffle: () => void;
 }) {
   const { download } = useDownload();
   const { callToolAsync, isPending: isRendering } = useCallTool("render-badge-png");
   const [hover, setHover] = useState(false);
   const firstName = badge.name.split(" ")[0];
+  // Re-rollable seed: bump 0 reuses the server avatar; >0 generates a fresh face.
+  const seed = seedFor(badge.name, seedBump);
   const avatarSvg = useMemo(
-    () => generateAvatar(badge.name, selectedStyle, badge.avatarSvg),
-    [badge.name, selectedStyle, badge.avatarSvg],
+    () => generateAvatar(seed, selectedStyle, seedBump > 0 ? "" : badge.avatarSvg, badge.gender),
+    [seed, selectedStyle, seedBump, badge.avatarSvg, badge.gender],
   );
 
   const downloadBadge = async (e: React.MouseEvent) => {
@@ -729,6 +826,8 @@ function BadgeCard({
         accentHex: accent,
         eventTitle: event.title,
         avatarStyle: selectedStyle,
+        seed,
+        ...(badge.gender ? { gender: badge.gender } : {}),
       });
       const pngDataUrl = res.structuredContent?.pngDataUrl;
       if (pngDataUrl) {
@@ -810,6 +909,37 @@ function BadgeCard({
             filter: "blur(2px)",
           }}
         />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onShuffle();
+          }}
+          title="Shuffle this face"
+          aria-label={`Shuffle ${firstName}'s avatar`}
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            border: `1px solid ${border}`,
+            background: cardBg,
+            color: subtext,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 14,
+            lineHeight: 1,
+            padding: 0,
+            opacity: lift ? 1 : 0,
+            transition: "opacity 160ms ease",
+            zIndex: 2,
+          }}
+        >
+          ⟳
+        </button>
         <div
           style={{
             position: "relative",
@@ -833,7 +963,7 @@ function BadgeCard({
             }}
           >
             <img
-              key={selectedStyle}
+              key={`${selectedStyle}-${seedBump}`}
               src={svgToDataUrl(avatarSvg)}
               alt={`${badge.name} avatar`}
               style={{

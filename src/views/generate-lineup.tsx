@@ -1043,11 +1043,11 @@ function BadgeCard({
           </button>
           <div
             style={{
-              width: 50,
-              height: 50,
+              width: 75,
+              height: 75,
               background: "#fff",
-              borderRadius: 6,
-              padding: 4,
+              borderRadius: 8,
+              padding: 5,
               border: `1px solid ${border}`,
             }}
             title="vCard QR — scan to save contact"

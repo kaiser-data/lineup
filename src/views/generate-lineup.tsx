@@ -233,6 +233,80 @@ function useAutoSize<T extends HTMLElement>() {
   return ref;
 }
 
+/** Honour the user's reduced-motion preference for the showy bits. */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const m = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const on = () => setReduced(m.matches);
+    on();
+    m.addEventListener?.("change", on);
+    return () => m.removeEventListener?.("change", on);
+  }, []);
+  return reduced;
+}
+
+/**
+ * One-shot celebration burst in the event accent when the pack first lands —
+ * the "tada" moment for the live demo. Self-contained (no dependency), fixed
+ * overlay, pointer-transparent, and auto-unmounts. Skipped under reduced motion.
+ */
+function Confetti({ accent }: { accent: string }) {
+  const reduced = useReducedMotion();
+  const [done, setDone] = useState(false);
+  const pieces = useMemo(() => {
+    const colors = [accent, rgba(accent, 0.65), "#fbbf24", "#34d399", "#f472b6", "#60a5fa"];
+    return Array.from({ length: 44 }, (_, i) => ({
+      left: ((i * 2.27) % 100),
+      cx: ((i * 37) % 140) - 70,
+      cr: ((i * 97) % 720) + 200,
+      delay: (i * 23) % 260,
+      dur: 1300 + ((i * 61) % 800),
+      color: colors[i % colors.length],
+      w: 6 + (i % 3) * 2,
+      h: 10 + (i % 4) * 2,
+    }));
+  }, [accent]);
+  useEffect(() => {
+    const t = setTimeout(() => setDone(true), 2400);
+    return () => clearTimeout(t);
+  }, []);
+  if (reduced || done) return null;
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        overflow: "hidden",
+        zIndex: 50,
+      }}
+    >
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          style={
+            {
+              position: "absolute",
+              top: -18,
+              left: `${p.left}%`,
+              width: p.w,
+              height: p.h,
+              background: p.color,
+              borderRadius: 2,
+              "--cx": `${p.cx}px`,
+              "--cr": `${p.cr}deg`,
+              animation: `lineup-confetti ${p.dur}ms cubic-bezier(0.4,0.1,0.7,1) ${p.delay}ms forwards`,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function GenerateLineup() {
   const { output, isPending } = useToolInfo<"generate-lineup">();
   const { theme } = useLayout();
@@ -411,6 +485,7 @@ function LineupCard({
       }}
       className="space-y-5"
     >
+      <Confetti accent={accent} />
       <EventHeader
         event={event}
         day={day}
@@ -508,6 +583,7 @@ function EventHeader({
 
   return (
     <div
+      className="lineup-anim-drop"
       style={{
         background: cardBg,
         border: `1px solid ${border}`,
@@ -764,9 +840,10 @@ function BadgeGrid({
           gap: 16,
         }}
       >
-        {badges.map((badge) => (
+        {badges.map((badge, i) => (
           <BadgeCard
             key={badge.name}
+            index={i}
             badge={badge}
             event={event}
             accent={accent}
@@ -786,6 +863,7 @@ function BadgeGrid({
 }
 
 function BadgeCard({
+  index,
   badge,
   event,
   accent,
@@ -798,6 +876,7 @@ function BadgeCard({
   onSelect,
   onShuffle,
 }: {
+  index: number;
   badge: Badge;
   event: EventInfo;
   accent: string;
@@ -813,7 +892,18 @@ function BadgeCard({
   const { download } = useDownload();
   const { callToolAsync, isPending: isRendering } = useCallTool("render-badge-png");
   const [hover, setHover] = useState(false);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
+  const reduced = useReducedMotion();
   const firstName = badge.name.split(" ")[0];
+
+  // Pointer-tracking 3D tilt — the "trading card in your hand" feel.
+  const handleTilt = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (reduced) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    setTilt({ rx: -py * 9, ry: px * 11 });
+  };
   // Re-rollable seed: bump 0 reuses the server avatar; >0 generates a fresh face.
   const seed = seedFor(badge.name, seedBump);
   const avatarSvg = useMemo(
@@ -867,27 +957,40 @@ function BadgeCard({
   };
 
   const lift = hover || selected;
+  const transform = `perspective(900px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateY(${
+    lift ? -6 : 0
+  }px) scale(${lift ? 1.02 : 1})`;
 
   return (
     <div
-      onClick={onSelect}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        cursor: "pointer",
-        borderRadius: 18,
-        padding: 2,
-        background: `linear-gradient(140deg, ${accent} 0%, ${rgba(
-          accent,
-          0.35,
-        )} 50%, ${accent} 100%)`,
-        transform: lift ? "translateY(-4px) scale(1.015)" : "translateY(0) scale(1)",
-        boxShadow: lift
-          ? `0 16px 36px -12px ${rgba(accent, 0.55)}`
-          : "0 1px 2px rgba(0,0,0,0.06)",
-        transition: "transform 180ms cubic-bezier(0.2,0.7,0.2,1), box-shadow 180ms ease",
-      }}
+      className={reduced ? undefined : "lineup-anim-rise"}
+      style={reduced ? undefined : { animationDelay: `${80 + index * 70}ms` }}
     >
+      <div
+        onClick={onSelect}
+        onMouseEnter={() => setHover(true)}
+        onMouseMove={handleTilt}
+        onMouseLeave={() => {
+          setHover(false);
+          setTilt({ rx: 0, ry: 0 });
+        }}
+        style={{
+          cursor: "pointer",
+          borderRadius: 18,
+          padding: 2,
+          background: `linear-gradient(140deg, ${accent} 0%, ${rgba(
+            accent,
+            0.35,
+          )} 50%, ${accent} 100%)`,
+          transform,
+          transformStyle: "preserve-3d",
+          willChange: "transform",
+          boxShadow: lift
+            ? `0 18px 40px -12px ${rgba(accent, 0.55)}`
+            : "0 1px 2px rgba(0,0,0,0.06)",
+          transition: "transform 180ms cubic-bezier(0.2,0.7,0.2,1), box-shadow 180ms ease",
+        }}
+      >
       <div
         style={{
           background: cardBg,
@@ -913,6 +1016,33 @@ function BadgeCard({
             filter: "blur(2px)",
           }}
         />
+        {lift && !reduced && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 16,
+              overflow: "hidden",
+              pointerEvents: "none",
+              zIndex: 3,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: "-60%",
+                left: 0,
+                width: "55%",
+                height: "220%",
+                background:
+                  "linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%)",
+                filter: "blur(2px)",
+                animation: "lineup-foil 720ms ease-out forwards",
+              }}
+            />
+          </div>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -1059,6 +1189,7 @@ function BadgeCard({
             />
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

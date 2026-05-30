@@ -19,7 +19,7 @@ const attendeeSchema = z.object({
     .describe(
       "Optional gender hint to make the avatar read more clearly: 'm' (no earrings, may have a beard), 'f' (no beard, may have earrings), or 'x'/omit for neutral. Only affects the lorelei & notionists styles. Infer from the name when the user clearly implies it, otherwise omit.",
     ),
-});
+}).strict();
 
 const server = new McpServer(
   {
@@ -31,7 +31,10 @@ const server = new McpServer(
   {
     name: "generate-lineup",
     description:
-      "Generate an event pack: a Luma-style event card with .ics + RSVP QR, and an identity badge per attendee with a deterministic avatar and vCard-encoded QR.",
+      "Generate an event pack: a Luma-style event card with .ics + RSVP QR, and an identity badge per attendee with a deterministic avatar and vCard-encoded QR. " +
+      "Use when the user describes an event and the people attending (meetup, conference, wedding, hackathon, dinner) and wants shareable cards. " +
+      "Do NOT use to render a single downloadable PNG of one badge — use render-badge-png for that. " +
+      "Output is deterministic: the same attendee name + style always yields the same avatar.",
     inputSchema: {
       title: z.string().describe("Event title"),
       dateISO: z
@@ -90,6 +93,7 @@ const server = new McpServer(
       title: "Generate an event Lineup",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: false,
     },
     _meta: {
@@ -161,7 +165,10 @@ const server = new McpServer(
   {
     name: "render-badge-png",
     description:
-      "Render a single identity badge as a shareable PNG (avatar + name + role + vCard QR) composed with Satori. Called when the user downloads a badge.",
+      "Render a single identity badge as a shareable PNG (avatar + name + role + vCard QR) composed with Satori. " +
+      "Use when the user clicks download on one badge, or asks for a single saveable/printable badge image. " +
+      "Do NOT use to build the whole event view — use generate-lineup for that. " +
+      "Match avatarStyle/gender/accentHex to the badge shown in the Lineup so the PNG looks identical.",
     inputSchema: {
       name: z.string().describe("Attendee full name"),
       role: z.string().optional().describe("Role label"),
@@ -189,6 +196,7 @@ const server = new McpServer(
       title: "Download badge PNG",
       readOnlyHint: true,
       destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: false,
     },
     _meta: {

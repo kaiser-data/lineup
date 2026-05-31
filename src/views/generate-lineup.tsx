@@ -5,6 +5,7 @@ import {
   useLayout,
   useViewState,
   useRequestSize,
+  useOpenExternal,
 } from "skybridge/web";
 import { QRCodeSVG } from "qrcode.react";
 import { createAvatar } from "@dicebear/core";
@@ -190,6 +191,48 @@ function hexToRgb(hex: string): [number, number, number] {
 function rgba(hex: string, alpha: number): string {
   const [r, g, b] = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Compact UTC stamp Google Calendar wants: 20260528T160000Z. */
+function gcalStamp(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+/**
+ * Build a Google Calendar "add event" template URL. Opened via the host's
+ * openExternal bridge, this works inside ChatGPT's sandboxed iframe where the
+ * `download()` bridge (and therefore an .ics file) is a no-op. Returns null for
+ * an unparseable date so the caller can hide the button.
+ */
+function buildGCalUrl(event: EventInfo): string | null {
+  const start = new Date(event.dateISO);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: event.title,
+    dates: `${gcalStamp(start)}/${gcalStamp(end)}`,
+  });
+  if (event.venue) params.set("location", event.venue);
+  params.set(
+    "details",
+    event.rsvpUrl ? `RSVP: ${event.rsvpUrl}` : "Created with Lineup",
+  );
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/** Shared outline "pill" button style for the header's secondary actions. */
+function pillBtn(border: string): React.CSSProperties {
+  return {
+    background: "transparent",
+    color: "inherit",
+    border: `1px solid ${border}`,
+    borderRadius: 999,
+    padding: "10px 18px",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+  };
 }
 
 function formatDate(dateISO: string): { day: string; time: string } {
@@ -538,47 +581,40 @@ function EventHeader({
   selectedStyle: StyleOption;
   onStyle: (s: StyleOption) => void;
 }) {
-  const { download } = useDownload();
-  const [copied, setCopied] = useState(false);
+  const openExternal = useOpenExternal();
+  const [copied, setCopied] = useState<null | "ok" | "fail">(null);
+  const gcalUrl = useMemo(() => buildGCalUrl(event), [event]);
 
+  // Clipboard is blocked in the sandboxed iframe, so try the API, then fall
+  // back to a hidden-textarea execCommand copy (often works under the click
+  // gesture). Either way the link is rendered as selectable text below.
   const copyShare = async () => {
+    let ok = false;
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        ok = true;
+      }
     } catch {
-      // clipboard may be blocked in the iframe — the QR + visible link still work
+      /* fall through to execCommand */
     }
-  };
-
-  const downloadIcs = async () => {
-    await download({
-      contents: [
-        {
-          type: "resource",
-          resource: {
-            uri: `file:///${slugify(event.title)}.ics`,
-            mimeType: "text/calendar",
-            text: event.icsString,
-          },
-        },
-      ],
-    });
-  };
-
-  const downloadQr = async () => {
-    await download({
-      contents: [
-        {
-          type: "resource",
-          resource: {
-            uri: `file:///${slugify(event.title)}-rsvp-qr.svg`,
-            mimeType: "image/svg+xml",
-            text: event.qrSvg,
-          },
-        },
-      ],
-    });
+    if (!ok) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = shareUrl;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        /* selectable text below is the final fallback */
+      }
+    }
+    setCopied(ok ? "ok" : "fail");
+    setTimeout(() => setCopied(null), 2400);
   };
 
   return (
@@ -644,7 +680,7 @@ function EventHeader({
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
             <button
-              onClick={downloadIcs}
+              onClick={() => openExternal(shareUrl)}
               style={{
                 background: accent,
                 color: "#fff",
@@ -656,45 +692,94 @@ function EventHeader({
                 cursor: "pointer",
               }}
             >
-              Add to calendar
+              Open live page →
             </button>
-            <button
-              onClick={downloadQr}
-              style={{
-                background: "transparent",
-                color: "inherit",
-                border: `1px solid ${border}`,
-                borderRadius: 999,
-                padding: "10px 18px",
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              Download RSVP QR
+            {gcalUrl ? (
+              <button onClick={() => openExternal(gcalUrl)} style={pillBtn(border)}>
+                Add to calendar
+              </button>
+            ) : null}
+            {event.rsvpUrl ? (
+              <button onClick={() => openExternal(event.rsvpUrl!)} style={pillBtn(border)}>
+                RSVP
+              </button>
+            ) : null}
+            <button onClick={copyShare} style={pillBtn(border)}>
+              {copied === "ok"
+                ? "Copied ✓"
+                : copied === "fail"
+                  ? "Select link ↓"
+                  : "Copy link"}
             </button>
+          </div>
+          <div
+            style={{
+              marginTop: 12,
+              fontSize: 12,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              color: subtext,
+              userSelect: "all",
+              wordBreak: "break-all",
+              cursor: "text",
+            }}
+            title="Tap to select, then copy"
+          >
+            {shareUrl}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, color: subtext }}>
+            Scan the QR or open the live page — the whole pack rides in the link,
+            nothing is stored.
           </div>
         </div>
         <div
           style={{
-            width: 132,
-            height: 132,
-            borderRadius: 18,
-            background: "#fff",
-            padding: 12,
-            border: `1px solid ${border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            position: "relative",
             flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
           }}
-          title={event.rsvpUrl ?? "Event QR"}
         >
-          <img
-            src={svgToDataUrl(event.qrSvg)}
-            alt="Event RSVP QR"
-            style={{ width: "100%", height: "100%" }}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: -10,
+              borderRadius: 28,
+              background: rgba(accent, 0.25),
+              filter: "blur(18px)",
+              zIndex: 0,
+            }}
           />
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              width: 140,
+              height: 140,
+              borderRadius: 18,
+              background: "#fff",
+              padding: 12,
+              border: `1px solid ${border}`,
+              lineHeight: 0,
+            }}
+            title="Scan to open the live page"
+          >
+            <QRCodeSVG value={shareUrl} size={116} level="L" />
+          </div>
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              color: subtext,
+            }}
+          >
+            Scan → live page
+          </div>
         </div>
       </div>
 
@@ -738,55 +823,6 @@ function EventHeader({
         })}
       </div>
 
-      <div
-        style={{
-          position: "relative",
-          marginTop: 18,
-          paddingTop: 18,
-          borderTop: `1px solid ${border}`,
-          display: "flex",
-          gap: 16,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            background: "#fff",
-            padding: 8,
-            borderRadius: 12,
-            border: `1px solid ${border}`,
-            flexShrink: 0,
-            lineHeight: 0,
-          }}
-        >
-          <QRCodeSVG value={shareUrl} size={128} level="L" />
-        </div>
-        <div style={{ flex: "1 1 220px", minWidth: 200 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-            Share this page
-          </div>
-          <div style={{ color: subtext, fontSize: 13, marginBottom: 10 }}>
-            Scan to open the live event page on a phone — or copy the link. The
-            whole pack rides in the link; nothing is stored.
-          </div>
-          <button
-            onClick={copyShare}
-            style={{
-              background: "transparent",
-              color: "inherit",
-              border: `1px solid ${border}`,
-              borderRadius: 999,
-              padding: "8px 16px",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            {copied ? "Copied ✓" : "Copy share link"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

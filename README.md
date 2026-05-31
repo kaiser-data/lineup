@@ -96,14 +96,46 @@ Tools live in [`src/server.ts`](src/server.ts); the view is [`src/views/generate
 
 Helper scripts in [`scripts/`](scripts): `status.sh`, `test.sh <payload>`, `save-artifacts.sh`, `tunnel.sh`, `stop.sh`. Test payloads (incl. voting / conference / announcement use cases) in [`test-payloads.json`](test-payloads.json).
 
-## Deploy
+## Deploy & self-host
+
+**Yes — Lineup is fully self-hostable, and it generates every graphic itself.**
+There is no external image service and no API key: avatars ([DiceBear](https://dicebear.com)),
+QR codes ([qrcode](https://github.com/soldair/node-qrcode)), the calendar `.ics`
+([ics](https://github.com/adamgibbons/ics)) and the 480×640 PNG badges
+([Satori](https://github.com/vercel/satori) + [Resvg](https://github.com/yisibl/resvg-js))
+are all rendered in pure JavaScript/WASM inside your own deployment. Host it
+anywhere that runs Node or an edge runtime and you own the whole pipeline.
+
+**The MCP app** (the server + ChatGPT view):
 
 ```bash
-npm run deploy       # → Alpic Cloud (free)
+npm run deploy            # → Alpic Cloud (free tier)
+# or self-host the same build:
+npm run build && npm start            # Node, any host (Fly.io, Railway, Render, a VM)
+docker build -t lineup . && docker run -p 3000:3000 lineup   # Dockerfile ships in repo
 ```
 
-Pure-JS / edge-friendly libraries keep Cloudflare Workers viable as a fallback.
+Because the generators are pure-JS / edge-friendly (no `sharp`, no native
+`canvas`), **Cloudflare Workers** is a viable target too.
 
-## License
+**The share page** (`docs/index.html`) is a single static file with no backend —
+host it on GitHub Pages (the default), Netlify, Cloudflare Pages, or any static
+host. It regenerates the whole pack client-side from the link `#fragment`, so
+self-hosting it stores nothing and needs no server.
 
-MIT
+## License & attribution
+
+Lineup itself is **MIT** — see [`LICENSE`](LICENSE).
+
+It is built on third-party frameworks and assets, each under its own license.
+The **generated graphic** in particular carries attribution requirements:
+
+- **Avatar designs** — [DiceBear](https://dicebear.com) (code MIT). Styles:
+  `lorelei` (Lisa Wischofsky, CC0 1.0), `notionists` (Zoish, CC0 1.0),
+  `bottts` (Pablo Stanley, free for personal & commercial use),
+  `shapes` (DiceBear, CC0 1.0).
+- **Inter** font — The Inter Project Authors, [SIL OFL 1.1](https://openfontlicense.org/).
+- **Satori** & **Resvg** — MPL-2.0 (used unmodified).
+
+The full component list and licenses are in
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

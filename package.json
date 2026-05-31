@@ -2,7 +2,9 @@
   "name": "lineup",
   "version": "0.0.1",
   "private": true,
-  "description": "Alpic MCP Server Template",
+  "description": "Turn one sentence into a full event pack (event card + identity badges + QR + .ics) inside ChatGPT.",
+  "license": "MIT",
+  "author": "Martin Kaiser",
   "type": "module",
   "scripts": {
     "dev": "skybridge dev",

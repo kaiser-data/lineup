@@ -548,6 +548,7 @@ function LineupCard({
         cardBg={cardBg}
         border={border}
         subtext={subtext}
+        shareUrl={shareUrl}
         selectedBadge={selectedBadge}
         selectedStyle={selectedStyle}
         seedBumps={seedBumps}
@@ -834,6 +835,7 @@ function BadgeGrid({
   cardBg,
   border,
   subtext,
+  shareUrl,
   selectedBadge,
   selectedStyle,
   seedBumps,
@@ -846,6 +848,7 @@ function BadgeGrid({
   cardBg: string;
   border: string;
   subtext: string;
+  shareUrl: string;
   selectedBadge: string | null;
   selectedStyle: StyleOption;
   seedBumps: Record<string, number>;
@@ -886,6 +889,7 @@ function BadgeGrid({
             cardBg={cardBg}
             border={border}
             subtext={subtext}
+            shareUrl={shareUrl}
             selectedStyle={selectedStyle}
             seedBump={seedBumps[badge.name] ?? 0}
             selected={selectedBadge === badge.name}
@@ -906,6 +910,7 @@ function BadgeCard({
   cardBg,
   border,
   subtext,
+  shareUrl,
   selectedStyle,
   seedBump,
   selected,
@@ -919,6 +924,7 @@ function BadgeCard({
   cardBg: string;
   border: string;
   subtext: string;
+  shareUrl: string;
   selectedStyle: StyleOption;
   seedBump: number;
   selected: boolean;
@@ -926,11 +932,16 @@ function BadgeCard({
   onShuffle: () => void;
 }) {
   const { download } = useDownload();
+  const openExternal = useOpenExternal();
   const { callToolAsync, isPending: isRendering } = useCallTool("render-badge-png");
   const [hover, setHover] = useState(false);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
   const reduced = useReducedMotion();
   const firstName = badge.name.split(" ")[0];
+  // ChatGPT's Apps SDK host has no working download() bridge — detect it so we
+  // can route "save" to the live page (a real browser) instead of a no-op.
+  const onAppsSdk =
+    typeof window !== "undefined" && Boolean((window as { openai?: unknown }).openai);
 
   // Pointer-tracking 3D tilt — the "trading card in your hand" feel.
   const handleTilt = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -949,6 +960,12 @@ function BadgeCard({
 
   const downloadBadge = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    // In ChatGPT the file download bridge is a no-op, so open the live page
+    // where this badge can be saved in a real browser.
+    if (onAppsSdk) {
+      openExternal(shareUrl);
+      return;
+    }
     try {
       const res = await callToolAsync({
         name: badge.name,
@@ -1193,6 +1210,7 @@ function BadgeCard({
           <button
             onClick={downloadBadge}
             disabled={isRendering}
+            title={onAppsSdk ? "Opens the live page where you can save this badge" : "Download this badge as a PNG"}
             style={{
               background: "transparent",
               border: `1px solid ${border}`,
@@ -1205,7 +1223,7 @@ function BadgeCard({
               opacity: isRendering ? 0.6 : 1,
             }}
           >
-            {isRendering ? "Rendering…" : "Download"}
+            {onAppsSdk ? "Save →" : isRendering ? "Rendering…" : "Download"}
           </button>
           <div
             style={{

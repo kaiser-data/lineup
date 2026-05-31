@@ -30,9 +30,9 @@ const STYLE_DEFS = { lorelei, notionists, bottts, shapes };
 // One column per card. Accent + label match the README showcase.
 const CARDS = [
   { style: "notionists", name: "Aisha", role: "Speaker", accent: "#6366f1", label: "Notionists" },
-  { style: "bottts", name: "Priya", role: "Judge", accent: "#22c55e", label: "Bottts" },
   // Pin a calm mouth so the organizer avatar looks professional, not cheeky.
   { style: "lorelei", name: "Mei", role: "Organizer", accent: "#ef4444", label: "Lorelei", opts: { mouth: ["happy01"] } },
+  { style: "bottts", name: "Priya", role: "Judge", accent: "#22c55e", label: "Bottts" },
   { style: "shapes", name: "Zoe", role: "Designer", accent: "#3b82f6", label: "Shapes" },
 ];
 const EVENT_TITLE = "Berlin Hack Night";

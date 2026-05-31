@@ -14,7 +14,7 @@ import { useToolInfo, useCallTool } from "../helpers.js";
 
 const SHARE_BASE = "https://kaiser-data.github.io/lineup/";
 
-const STYLE_OPTIONS = ["lorelei", "notionists", "bottts", "shapes"] as const;
+const STYLE_OPTIONS = ["notionists", "lorelei", "bottts", "shapes"] as const;
 type StyleOption = (typeof STYLE_OPTIONS)[number];
 const STYLE_LABELS: Record<StyleOption, string> = {
   lorelei: "Lorelei",
@@ -360,7 +360,7 @@ export default function GenerateLineup() {
   const initialStyle: StyleOption =
     data?.event?.avatarStyle && STYLE_OPTIONS.includes(data.event.avatarStyle as StyleOption)
       ? (data.event.avatarStyle as StyleOption)
-      : "lorelei";
+      : "notionists";
 
   const [{ selectedBadge, selectedStyle, seedBumps }, setViewState] = useViewState<{
     selectedBadge: string | null;

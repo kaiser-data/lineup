@@ -250,7 +250,7 @@ async function render(){
     accentHex: P.a ?? P.accentHex ?? '#6366f1',
     rsvpUrl: P.u ?? P.rsvpUrl ?? '',
     durationHours: P.h ?? P.durationHours ?? 3,
-    avatarStyle: (() => { const s = P.y ?? P.avatarStyle; return s && STYLES[s] ? s : 'lorelei'; })(),
+    avatarStyle: (() => { const s = P.y ?? P.avatarStyle; return s && STYLES[s] ? s : 'notionists'; })(),
   };
   const rawAttendees = Array.isArray(P.p) ? P.p : Array.isArray(P.attendees) ? P.attendees : [];
   const attendees = rawAttendees.map(a => ({

@@ -57,7 +57,7 @@ const server = new McpServer(
         .enum(AVATAR_STYLES)
         .optional()
         .describe(
-          "Avatar style for the whole crew. 'lorelei' = monochrome line art (default, calm/professional), 'notionists' = Notion-style sketch (friendly meetups), 'bottts' = colorful robots (hackathons / playful trading-card vibe), 'shapes' = abstract geometric (anonymous voting / ballots).",
+          "Avatar style for the whole crew. 'notionists' = Notion-style sketch (default, friendly meetups), 'lorelei' = monochrome line art (calm/professional), 'bottts' = colorful robots (hackathons / playful trading-card vibe), 'shapes' = abstract geometric (anonymous voting / ballots).",
         ),
       attendees: z
         .array(attendeeSchema)

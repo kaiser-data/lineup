@@ -6,7 +6,7 @@ Lineup is a ChatGPT App (built on [Alpic Skybridge](https://docs.skybridge.tech)
 
 > *"Announce Friday's panel — speakers Lea, Marco and Priya — accent red, notionists style."*
 
-![Four identity badges across four avatar styles: notionists, bottts, lorelei, shapes](assets/badge-styles.png)
+![Four identity badges across four avatar styles: notionists, lorelei, bottts, shapes](assets/badge-styles.png)
 
 Built for Berlin Hack Night (May 2026) with the Skybridge framework. Coded mainly with **Claude Code**, with **OpenAI Codex** in support.
 
@@ -35,8 +35,8 @@ The whole crew renders in one consistent style. Two ways to set it:
 
 | Style | Vibe | Try saying… |
 |---|---|---|
-| **`lorelei`** *(default)* | Monochrome line art — calm, professional | *"…default style"* (or omit) |
-| **`notionists`** | Notion-style sketch — friendly meetups | *"…in notionists style"* |
+| **`notionists`** *(default)* | Notion-style sketch — friendly meetups | *"…default style"* (or omit) |
+| **`lorelei`** | Monochrome line art — calm, professional | *"…in lorelei line-art style"* |
 | **`bottts`** | Colorful robots — playful trading cards | *"…make it a hackathon robot roster"* |
 | **`shapes`** | Abstract geometric — anonymous-looking | *"…anonymous voting cards"* |
 

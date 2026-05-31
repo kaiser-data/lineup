@@ -6,9 +6,9 @@ import {
   shapes,
 } from "@dicebear/collection";
 
-export const AVATAR_STYLES = ["lorelei", "notionists", "bottts", "shapes"] as const;
+export const AVATAR_STYLES = ["notionists", "lorelei", "bottts", "shapes"] as const;
 export type AvatarStyle = (typeof AVATAR_STYLES)[number];
-export const DEFAULT_AVATAR_STYLE: AvatarStyle = "lorelei";
+export const DEFAULT_AVATAR_STYLE: AvatarStyle = "notionists";
 
 export const GENDERS = ["m", "f", "x"] as const;
 export type Gender = (typeof GENDERS)[number];
